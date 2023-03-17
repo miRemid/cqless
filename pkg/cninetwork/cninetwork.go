@@ -5,15 +5,16 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
 
 	gocni "github.com/containerd/go-cni"
+	"github.com/miRemid/cqless/pkg/config"
 	"github.com/miRemid/cqless/pkg/types"
 	"github.com/pkg/errors"
 )
@@ -28,33 +29,33 @@ func init() {
 
 type CNIManager struct {
 	cli    gocni.CNI
-	config CNIConfig
+	config *config.NetworkConfig
 }
 
 // InitNetwork initialize the default cni network for all
 // function containers
-func (m *CNIManager) InitNetwork(config CNIConfig) error {
+func (m *CNIManager) InitNetwork(config *config.NetworkConfig) error {
 	m.config = config
 
-	if !dirExists(config.ConfDir) {
-		if err := os.MkdirAll(config.ConfDir, 0755); err != nil {
+	if !dirExists(config.ConfigPath) {
+		if err := os.MkdirAll(config.ConfigPath, 0755); err != nil {
 			return err
 		}
 	}
-	netConfig := path.Join(config.ConfDir, config.ConfFileName)
-	if err := os.WriteFile(netConfig, config.GenerateJSON(), 0644); err != nil {
+	netConfig := path.Join(config.ConfigPath, config.ConfigFileName)
+	if err := os.WriteFile(netConfig, m.GenerateJSON(), 0644); err != nil {
 		return err
 	}
 
 	cni, err := gocni.New(
-		gocni.WithPluginConfDir(config.ConfDir),
-		gocni.WithPluginDir([]string{config.BinDir}),
+		gocni.WithPluginConfDir(config.ConfigPath),
+		gocni.WithPluginDir([]string{config.BinaryPath}),
 		gocni.WithInterfacePrefix(config.IfPrefix),
 	)
 	if err != nil {
 		return err
 	}
-	if err := cni.Load(gocni.WithLoNetwork, gocni.WithConfListFile(filepath.Join(config.ConfDir, config.ConfFileName))); err != nil {
+	if err := cni.Load(gocni.WithLoNetwork, gocni.WithConfListFile(filepath.Join(config.ConfigPath, config.ConfigFileName))); err != nil {
 		return err
 	}
 	m.cli = cni
@@ -62,7 +63,7 @@ func (m *CNIManager) InitNetwork(config CNIConfig) error {
 }
 
 // InitNetwork initialize the default cni manager
-func InitNetwork(config CNIConfig) error {
+func InitNetwork(config *config.NetworkConfig) error {
 	return defaultManager.InitNetwork(config)
 }
 
@@ -102,7 +103,7 @@ func CreateCNINetwork(ctx context.Context, cnic types.Container, labels map[stri
 
 // GetIPAddress returns the IP address from container based on container name and PID
 func (m *CNIManager) GetIPAddress(container string, PID uint32) (string, error) {
-	CNIDir := path.Join(m.config.DataDir, m.config.NetworkName)
+	CNIDir := path.Join(m.config.NetworkSavePath, m.config.NetworkName)
 
 	files, err := os.ReadDir(CNIDir)
 	if err != nil {
@@ -133,9 +134,9 @@ func GetIPAddress(container string, PID uint32) (string, error) {
 
 // CNIGateway returns the gateway for default subnet
 func (m *CNIManager) CNIGateway() (string, error) {
-	ip, _, err := net.ParseCIDR(m.config.Subnet)
+	ip, _, err := net.ParseCIDR(m.config.SubNet)
 	if err != nil {
-		return "", fmt.Errorf("error formatting gateway for network %s", m.config.Subnet)
+		return "", fmt.Errorf("error formatting gateway for network %s", m.config.SubNet)
 	}
 	ip = ip.To4()
 	ip[3] = 1
@@ -183,25 +184,39 @@ func (m *CNIManager) NetNamespace(cnic types.Container) string {
 	if len(cnic.NetNamespace) > 0 {
 		return cnic.NetNamespace
 	}
-	return fmt.Sprintf(m.config.NamespaceFmt, cnic.ID)
+	return fmt.Sprintf(m.config.NamespaceFormat, cnic.ID)
 }
 
-func dirEmpty(dirname string) (isEmpty bool) {
-	if !dirExists(dirname) {
-		return
+// Uninstall 删除所有网络
+// TODO: 完成后续工作
+func (m *CNIManager) Uninstall() error {
+	// 1. 删除所有网络
+	// 2. 删除网桥
+	// 由于在go-cni的文档中没有明确找到有关删除网桥的接口，因此使用命令行的方式删除
+	// 需要安装net-tools和brctl工具包
+	// 2.1 关闭网桥 ipconfig $BRIDGE_NAME down
+	command := exec.Command("ifconfig", m.config.BridgeName, "down")
+	command.Stdout = os.Stdout
+	command.Stdin = os.Stdin
+	command.Stderr = os.Stderr
+	fmt.Println(command)
+	if err := command.Run(); err != nil {
+		return err
 	}
+	// 2.2 删除网桥 brctl delbr $BRIDGE_NAME
+	command = exec.Command("brctl", "delbr", m.config.BridgeName)
+	command.Stdout = os.Stdout
+	command.Stdin = os.Stdin
+	command.Stderr = os.Stderr
+	fmt.Println(command)
+	if err := command.Run(); err != nil {
+		return err
+	}
+	return nil
+}
 
-	f, err := os.Open(dirname)
-	if err != nil {
-		return
-	}
-	defer func() { _ = f.Close() }()
-
-	// If the first file is EOF, the directory is empty
-	if _, err = f.Readdir(1); err == io.EOF {
-		isEmpty = true
-	}
-	return isEmpty
+func Uninstall() error {
+	return defaultManager.Uninstall()
 }
 
 func dirExists(dirname string) bool {

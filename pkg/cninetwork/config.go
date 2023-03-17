@@ -2,18 +2,6 @@ package cninetwork
 
 import "fmt"
 
-type CNIConfig struct {
-	BinDir       string
-	ConfDir      string
-	NamespaceFmt string
-	DataDir      string
-	ConfFileName string
-	NetworkName  string
-	BridgeName   string
-	Subnet       string
-	IfPrefix     string
-}
-
 var cniconf = `
 {
     "cniVersion": "0.4.0",
@@ -40,6 +28,11 @@ var cniconf = `
 }
 `
 
-func (config CNIConfig) GenerateJSON() []byte {
-	return []byte(fmt.Sprintf(cniconf, config.NetworkName, config.BridgeName, config.Subnet, config.DataDir))
+func (m *CNIManager) GenerateJSON() []byte {
+	return []byte(fmt.Sprintf(
+		cniconf,
+		m.config.NetworkName,
+		m.config.BridgeName,
+		m.config.SubNet,
+		m.config.NetworkSavePath))
 }

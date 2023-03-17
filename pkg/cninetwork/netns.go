@@ -17,7 +17,7 @@ import (
 	"github.com/vishvananda/netns"
 )
 
-var ErrLinkNotFound = errors.New("Link not found")
+var ErrLinkNotFound = errors.New("link not found")
 
 func WithNetNS(ns netns.NsHandle, work func() error) error {
 	runtime.LockOSThread()
@@ -42,7 +42,7 @@ func WithNetNSLink(ns netns.NsHandle, ifName string, work func(link netlink.Link
 	return WithNetNS(ns, func() error {
 		link, err := netlink.LinkByName(ifName)
 		if err != nil {
-			if err.Error() == errors.New("Link not found").Error() {
+			if err.Error() == errors.New("link not found").Error() {
 				return ErrLinkNotFound
 			}
 			return err
