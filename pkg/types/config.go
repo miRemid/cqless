@@ -1,4 +1,8 @@
-package config
+package types
+
+type CQLessConfig struct {
+	Network *NetworkConfig `json:"network"`
+}
 
 type NetworkConfig struct {
 	// BinaryPath CNI插件的绝对路径

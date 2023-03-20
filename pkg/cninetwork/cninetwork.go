@@ -14,10 +14,35 @@ import (
 	"strings"
 
 	gocni "github.com/containerd/go-cni"
-	"github.com/miRemid/cqless/pkg/config"
 	"github.com/miRemid/cqless/pkg/types"
 	"github.com/pkg/errors"
 )
+
+var cniconf = `
+{
+    "cniVersion": "0.4.0",
+    "name": "%s",
+    "plugins": [
+      {
+        "type": "bridge",
+        "bridge": "%s",
+        "isGateway": true,
+        "ipMasq": true,
+        "ipam": {
+            "type": "host-local",
+            "subnet": "%s",
+            "dataDir": "%s",
+            "routes": [
+                { "dst": "0.0.0.0/0" }
+            ]
+        }
+      },
+      {
+        "type": "firewall"
+      }
+    ]
+}
+`
 
 var (
 	defaultManager *CNIManager
@@ -29,12 +54,21 @@ func init() {
 
 type CNIManager struct {
 	cli    gocni.CNI
-	config *config.NetworkConfig
+	config *types.NetworkConfig
+}
+
+func (m *CNIManager) GenerateJSON() []byte {
+	return []byte(fmt.Sprintf(
+		cniconf,
+		m.config.NetworkName,
+		m.config.BridgeName,
+		m.config.SubNet,
+		m.config.NetworkSavePath))
 }
 
 // InitNetwork initialize the default cni network for all
 // function containers
-func (m *CNIManager) InitNetwork(config *config.NetworkConfig) error {
+func (m *CNIManager) InitNetwork(config *types.NetworkConfig) error {
 	m.config = config
 
 	if !dirExists(config.ConfigPath) {
@@ -63,46 +97,51 @@ func (m *CNIManager) InitNetwork(config *config.NetworkConfig) error {
 }
 
 // InitNetwork initialize the default cni manager
-func InitNetwork(config *config.NetworkConfig) error {
+func InitNetwork(config *types.NetworkConfig) error {
 	return defaultManager.InitNetwork(config)
 }
 
 // DeleteCNINetwork deletes a CNI network based on container's id and pid
-func (m *CNIManager) DeleteCNINetwork(ctx context.Context, cnic types.Container) error {
-	log.Printf("[Delete] removing CNI network for: %s\n", cnic.ID)
+func (m *CNIManager) DeleteCNINetwork(ctx context.Context, fn *types.Function) error {
+	log.Printf("[Delete] removing CNI network for: %s\n", fn.ID)
 
-	id := m.NetID(cnic.ID, cnic.PID)
-	netns := m.NetNamespace(cnic)
+	id := m.NetID(fn.ID, fn.PID)
+	netns := m.NetNamespace(fn)
 
 	if err := m.cli.Remove(ctx, id, netns); err != nil {
 		return errors.Wrapf(err, "Failed to remove network for task: %q, %v", id, err)
 	}
-	log.Printf("[Delete] removed: %s from namespace: %s, ID: %s\n", cnic.Name, netns, id)
+	log.Printf("[Delete] removed: %s from namespace: %s, ID: %s\n", fn.Name, netns, id)
 
 	return nil
 }
 
-func DeleteCNINetwork(ctx context.Context, cninc types.Container) error {
-	return defaultManager.DeleteCNINetwork(ctx, cninc)
+func DeleteCNINetwork(ctx context.Context, fn *types.Function) error {
+	return defaultManager.DeleteCNINetwork(ctx, fn)
 }
 
 // CreateCNINetwork creates a CNI network interface and attaches it to the context
-func (m *CNIManager) CreateCNINetwork(ctx context.Context, cnic types.Container, labels map[string]string) (*gocni.Result, error) {
-	id := m.NetID(cnic.ID, cnic.PID)
-	netns := m.NetNamespace(cnic)
-	result, err := m.cli.Setup(ctx, id, netns, gocni.WithLabels(labels))
+func (m *CNIManager) CreateCNINetwork(ctx context.Context, fn *types.Function) (*gocni.Result, error) {
+	id := m.NetID(fn.ID, fn.PID)
+	netns := m.NetNamespace(fn)
+	result, err := m.cli.Setup(ctx, id, netns, gocni.WithLabels(fn.Metadata))
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to setup network for task %q: %v", id, err)
 	}
+	ipAddress, _ := m.GetIPAddress(fn)
+	fn.IPAddress = ipAddress
 	return result, nil
 }
 
-func CreateCNINetwork(ctx context.Context, cnic types.Container, labels map[string]string) (*gocni.Result, error) {
-	return defaultManager.CreateCNINetwork(ctx, cnic, labels)
+func CreateCNINetwork(ctx context.Context, fn *types.Function) (*gocni.Result, error) {
+	return defaultManager.CreateCNINetwork(ctx, fn)
 }
 
 // GetIPAddress returns the IP address from container based on container name and PID
-func (m *CNIManager) GetIPAddress(container string, PID uint32) (string, error) {
+func (m *CNIManager) GetIPAddress(fn *types.Function) (string, error) {
+	return m.GetIPAddressRaw(fn.Name, fn.PID)
+}
+func (m *CNIManager) GetIPAddressRaw(container string, PID uint32) (string, error) {
 	CNIDir := path.Join(m.config.NetworkSavePath, m.config.NetworkName)
 
 	files, err := os.ReadDir(CNIDir)
@@ -127,9 +166,11 @@ func (m *CNIManager) GetIPAddress(container string, PID uint32) (string, error) 
 
 	return "", fmt.Errorf("unable to get IP address for container: %s", container)
 }
-
-func GetIPAddress(container string, PID uint32) (string, error) {
-	return defaultManager.GetIPAddress(container, PID)
+func GetIPAddress(fn *types.Function) (string, error) {
+	return defaultManager.GetIPAddress(fn)
+}
+func GetIPAddressRaw(container string, PID uint32) (string, error) {
+	return defaultManager.GetIPAddressRaw(container, PID)
 }
 
 // CNIGateway returns the gateway for default subnet
@@ -180,11 +221,12 @@ func (m *CNIManager) NetID(id string, pid uint32) string {
 }
 
 // NetNamespace generates the namespace path based on task PID.
-func (m *CNIManager) NetNamespace(cnic types.Container) string {
-	if len(cnic.NetNamespace) > 0 {
-		return cnic.NetNamespace
+func (m *CNIManager) NetNamespace(fn *types.Function) string {
+	if len(fn.Namespace) > 0 {
+		return fn.Namespace
 	}
-	return fmt.Sprintf(m.config.NamespaceFormat, cnic.ID)
+	fn.Namespace = fmt.Sprintf(m.config.NamespaceFormat, fn.ID)
+	return fn.Namespace
 }
 
 // Uninstall 删除所有网络

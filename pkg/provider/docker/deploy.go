@@ -3,16 +3,11 @@ package docker
 import (
 	"context"
 	"fmt"
-	"log"
-	"os"
-	"path"
 
-	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/types"
 
 	dtypes "github.com/docker/docker/api/types" // docker types
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -42,7 +37,7 @@ import (
 // 	return format + "\r"
 // }
 
-func (p *DockerProvider) pull(ctx context.Context, req types.FunctionDeployRequest, alwaysPull bool) error {
+func (p *DockerProvider) pull(ctx context.Context, req types.FunctionCreateRequest) error {
 	body, err := p.cli.ImagePull(ctx, req.Image, dtypes.ImagePullOptions{})
 	if err != nil {
 		return err
@@ -69,15 +64,15 @@ func (p *DockerProvider) pull(ctx context.Context, req types.FunctionDeployReque
 	return nil
 }
 
-func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionDeployRequest, cni *cninetwork.CNIManager, namespace string, alwaysPull bool) error {
+func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateRequest) (*types.Function, error) {
 	fmt.Printf("start to pull %s\n", req.Image)
-	err := p.pull(ctx, req, alwaysPull)
+	err := p.pull(ctx, req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	labels, err := req.BuildLabels()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	envs := req.BuildEnv()
 	mounts := p.getOSMounts()
@@ -96,7 +91,7 @@ func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionDeployReq
 		&container.Config{
 			Env:      envs,
 			Labels:   labels,
-			Hostname: req.Service,
+			Hostname: req.Name,
 			Image:    req.Image,
 		},
 		&container.HostConfig{
@@ -104,61 +99,17 @@ func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionDeployReq
 			Resources:   containerResources,
 			NetworkMode: "none", // 我们将使用cni来为container提供网络
 		},
-		nil, nil, req.Service)
+		nil, nil, req.Name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := p.cli.ContainerStart(ctx, resp.ID, dtypes.ContainerStartOptions{}); err != nil {
-		return err
+		return nil, err
 	}
 	info, err := p.cli.ContainerInspect(ctx, resp.ID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return p.createNetwork(ctx, info, cni)
-}
-
-// 为容器创建一个CNI网络用于通信
-func (p *DockerProvider) createNetwork(ctx context.Context, container dtypes.ContainerJSON, cni *cninetwork.CNIManager) error {
-	labels := map[string]string{}
-	_, err := cni.CreateCNINetwork(ctx, types.Container{
-		ID:           container.ID,
-		PID:          uint32(container.State.Pid),
-		Name:         container.Name,
-		NetNamespace: container.NetworkSettings.SandboxKey,
-	}, labels)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// Mount 宿主机的DNS信息和Hosts信息到容器中
-func (p *DockerProvider) getOSMounts() []mount.Mount {
-	hostsDir := "/var/lib/cqless"
-	if v, ok := os.LookupEnv("hosts_dir"); ok && len(v) > 0 {
-		hostsDir = v
-	}
-
-	mounts := []mount.Mount{}
-	mounts = append(mounts, mount.Mount{
-		Target: "/etc/resolv.conf",
-		Type:   "bind",
-		Source: path.Join(hostsDir, "resolv.conf"),
-		BindOptions: &mount.BindOptions{
-			Propagation: mount.PropagationRPrivate,
-		},
-		ReadOnly: true,
-	})
-
-	mounts = append(mounts, mount.Mount{
-		Target: "/etc/hosts",
-		Type:   "bind",
-		Source: path.Join(hostsDir, "hosts"),
-		BindOptions: &mount.BindOptions{
-			Propagation: mount.PropagationRPrivate,
-		},
-		ReadOnly: true,
-	})
-	return mounts
+	fn := p.createFunction(info, req.Name)
+	return fn, nil
 }

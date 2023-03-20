@@ -5,11 +5,10 @@ import (
 	"testing"
 
 	"github.com/miRemid/cqless/pkg/cninetwork"
-	"github.com/miRemid/cqless/pkg/config"
 	"github.com/miRemid/cqless/pkg/types"
 )
 
-var test_config = config.NetworkConfig{
+var test_config = &types.NetworkConfig{
 	BinaryPath:      "/opt/cni/bin",
 	ConfigPath:      "/opt/cni/net.d",
 	ConfigFileName:  "10-cqless.conflist",
@@ -25,9 +24,9 @@ func Test_PullImage(t *testing.T) {
 	p := NewProvider()
 	p.Init()
 	t.Log("Connect to docker, prepare to pull the nginx:alpine")
-	err := p.pull(context.Background(), types.FunctionDeployRequest{
+	err := p.pull(context.Background(), types.FunctionCreateRequest{
 		Image: "nginx:alpine",
-	}, false)
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,15 +36,16 @@ func Test_DeployImage(t *testing.T) {
 
 	p := NewProvider()
 	manager := new(cninetwork.CNIManager)
-	manager.InitNetwork(&test_config)
+	manager.InitNetwork(test_config)
 
 	p.Init()
 	t.Log("Connect to docker, prepare to pull the nginx:alpine\n")
-	err := p.Deploy(context.TODO(), types.FunctionDeployRequest{
-		Image:   "nginx:alpine",
-		Service: "nginx",
-	}, manager, types.DEFAULT_FUNCTION_NAMESPACE, true)
+	fn, err := p.Deploy(context.TODO(), types.FunctionCreateRequest{
+		Image: "nginx:alpine",
+		Name:  "nginx",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log(fn.IPAddress)
 }

@@ -6,7 +6,17 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/miRemid/cqless/pkg/provider"
 	"github.com/miRemid/cqless/pkg/types"
+	_ "github.com/miRemid/cqless/pkg/utils/log"
+	logger "github.com/sirupsen/logrus"
 )
+
+var (
+	log *logger.Entry
+)
+
+func init() {
+	log = logger.WithField("PROVIDER", "DOCKER")
+}
 
 type DockerProvider struct {
 	cli   *client.Client
