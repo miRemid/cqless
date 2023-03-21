@@ -6,8 +6,13 @@ import (
 	"testing"
 
 	"github.com/miRemid/cqless/pkg/types"
+	"github.com/sirupsen/logrus"
 	"gotest.tools/v3/assert"
 )
+
+func init() {
+	logrus.SetLevel(logrus.DebugLevel)
+}
 
 var test_config = types.NetworkConfig{
 	BinaryPath:      "/opt/cni/bin",
@@ -52,13 +57,13 @@ func Test_InitAndUninstallNetwork(t *testing.T) {
 func Test_CreateAndDeleteCNINetwork(t *testing.T) {
 	err := InitNetwork(&test_config)
 	assert.NilError(t, err)
-	ID := "351898b01465113416975ffb43eb730b51c12ab9c1e1c5b5421ae20245d30f4a"
-	PID := 199778
+	ID := "253713407df3bce594d37cbd4d7db5a08d0cc7affe16f673d1b535a04c0bd98e"
+	PID := 556512
 	c := &types.Function{
 		ID:        ID,
 		PID:       uint32(PID),
 		Name:      "Nginx",
-		Namespace: "/var/run/docker/netns/4b9acd80054c",
+		Namespace: "/var/run/docker/netns/44d1f3f69675",
 	}
 	_, err = CreateCNINetwork(context.Background(), c)
 	assert.NilError(t, err)

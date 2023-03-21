@@ -2,13 +2,15 @@ package docker
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/miRemid/cqless/pkg/types"
 
 	dtypes "github.com/docker/docker/api/types" // docker types
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // type pullResponse struct {
@@ -38,6 +40,17 @@ import (
 // }
 
 func (p *DockerProvider) pull(ctx context.Context, req types.FunctionCreateRequest) error {
+	// 1. check local
+	filter := filters.NewArgs(filters.Arg("reference", req.Image))
+	img, err := p.cli.ImageList(ctx, dtypes.ImageListOptions{
+		Filters: filter,
+	})
+	if err != nil {
+		return err
+	}
+	if len(img) > 0 {
+		return nil
+	}
 	body, err := p.cli.ImagePull(ctx, req.Image, dtypes.ImagePullOptions{})
 	if err != nil {
 		return err
@@ -65,11 +78,12 @@ func (p *DockerProvider) pull(ctx context.Context, req types.FunctionCreateReque
 }
 
 func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateRequest) (*types.Function, error) {
-	fmt.Printf("start to pull %s\n", req.Image)
+	log.Printf("start to pull %s\n", req.Image)
 	err := p.pull(ctx, req)
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("start to deploy function: %s\n", req.Name)
 	labels, err := req.BuildLabels()
 	if err != nil {
 		return nil, err
@@ -103,9 +117,11 @@ func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateReq
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("create function container, id: %s\n", resp.ID)
 	if err := p.cli.ContainerStart(ctx, resp.ID, dtypes.ContainerStartOptions{}); err != nil {
 		return nil, err
 	}
+	log.Printf("start function container, id: %s\n", resp.ID)
 	info, err := p.cli.ContainerInspect(ctx, resp.ID)
 	if err != nil {
 		return nil, err

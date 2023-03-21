@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -16,6 +15,8 @@ import (
 	gocni "github.com/containerd/go-cni"
 	"github.com/miRemid/cqless/pkg/types"
 	"github.com/pkg/errors"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var cniconf = `
@@ -122,13 +123,18 @@ func DeleteCNINetwork(ctx context.Context, fn *types.Function) error {
 
 // CreateCNINetwork creates a CNI network interface and attaches it to the context
 func (m *CNIManager) CreateCNINetwork(ctx context.Context, fn *types.Function) (*gocni.Result, error) {
+	log.Info("start to create cninetwork for function: ", fn.Name)
 	id := m.NetID(fn.ID, fn.PID)
 	netns := m.NetNamespace(fn)
-	result, err := m.cli.Setup(ctx, id, netns, gocni.WithLabels(fn.Metadata))
+	result, err := m.cli.Setup(ctx, id, netns, gocni.WithLabels(fn.Labels))
 	if err != nil {
+		log.Error(err)
 		return nil, errors.Wrapf(err, "Failed to setup network for task %q: %v", id, err)
 	}
-	ipAddress, _ := m.GetIPAddress(fn)
+	ipAddress, err := m.GetIPAddress(fn)
+	if err != nil {
+		return nil, err
+	}
 	fn.IPAddress = ipAddress
 	return result, nil
 }
@@ -139,11 +145,11 @@ func CreateCNINetwork(ctx context.Context, fn *types.Function) (*gocni.Result, e
 
 // GetIPAddress returns the IP address from container based on container name and PID
 func (m *CNIManager) GetIPAddress(fn *types.Function) (string, error) {
-	return m.GetIPAddressRaw(fn.Name, fn.PID)
+	return m.GetIPAddressRaw(fn.ID, fn.PID)
 }
 func (m *CNIManager) GetIPAddressRaw(container string, PID uint32) (string, error) {
 	CNIDir := path.Join(m.config.NetworkSavePath, m.config.NetworkName)
-
+	log.Debug("search CNIDir: ", CNIDir)
 	files, err := os.ReadDir(CNIDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to read CNI dir for container %s: %v", container, err)
