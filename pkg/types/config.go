@@ -2,6 +2,7 @@ package types
 
 type CQLessConfig struct {
 	Network *NetworkConfig `json:"network"`
+	Logger  LoggerConfig   `json:"logger"`
 }
 
 type NetworkConfig struct {
@@ -26,4 +27,9 @@ type NetworkConfig struct {
 	SubNet string
 	// IfPrefix 虚拟网卡的前缀
 	IfPrefix string
+}
+
+type LoggerConfig struct {
+	SavePath string
+	Debug    bool
 }

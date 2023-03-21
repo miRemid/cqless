@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/miRemid/cqless/pkg/cninetwork"
@@ -55,7 +54,6 @@ func (p *Provider) Deploy(cni *cninetwork.CNIManager, secretMountPath string, al
 			return
 		}
 		fn.IPAddress = ip
-		log.Println(ip)
 	}
 }
 

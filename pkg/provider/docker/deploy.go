@@ -9,8 +9,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"k8s.io/apimachinery/pkg/api/resource"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // type pullResponse struct {

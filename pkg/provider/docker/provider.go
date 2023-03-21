@@ -6,7 +6,10 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/miRemid/cqless/pkg/provider"
 	"github.com/miRemid/cqless/pkg/types"
+	zerolog "github.com/rs/zerolog/log"
 )
+
+var log = zerolog.With().Str("provider", "docker").Logger()
 
 type DockerProvider struct {
 	cli   *client.Client

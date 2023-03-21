@@ -8,14 +8,9 @@ import (
 
 	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/types"
+	_ "github.com/miRemid/cqless/pkg/utils"
 	"gotest.tools/v3/assert"
-
-	log "github.com/sirupsen/logrus"
 )
-
-func init() {
-	log.SetLevel(log.DebugLevel)
-}
 
 var test_config = &types.NetworkConfig{
 	BinaryPath:      "/opt/cni/bin",
@@ -31,12 +26,11 @@ var test_config = &types.NetworkConfig{
 
 func Test_Inspect(t *testing.T) {
 
-	id := "1cc6a820e3695d9da7d85861a1e4e7e9b269678bdb60f42179e9f867ffb62b00"
+	id := "90359a8e77a9bf829628274c96e81f24be31548f08ea74ba27f0120e8d221360"
 
 	data, err := p.Inspect(context.Background(), id)
 	assert.NilError(t, err)
-	log.Info(data.Config.Env)
-
+	log.Info().Msg(data.ID)
 }
 
 func Test_PullImage(t *testing.T) {

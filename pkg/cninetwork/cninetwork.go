@@ -15,9 +15,10 @@ import (
 	gocni "github.com/containerd/go-cni"
 	"github.com/miRemid/cqless/pkg/types"
 	"github.com/pkg/errors"
-
-	log "github.com/sirupsen/logrus"
+	zerolog "github.com/rs/zerolog/log"
 )
+
+var log = zerolog.With().Str("pkg", "cni").Logger()
 
 var cniconf = `
 {
@@ -123,12 +124,12 @@ func DeleteCNINetwork(ctx context.Context, fn *types.Function) error {
 
 // CreateCNINetwork creates a CNI network interface and attaches it to the context
 func (m *CNIManager) CreateCNINetwork(ctx context.Context, fn *types.Function) (*gocni.Result, error) {
-	log.Info("start to create cninetwork for function: ", fn.Name)
+	log.Info().Msgf("start to create cninetwork for function: %s", fn.Name)
 	id := m.NetID(fn.ID, fn.PID)
 	netns := m.NetNamespace(fn)
 	result, err := m.cli.Setup(ctx, id, netns, gocni.WithLabels(fn.Labels))
 	if err != nil {
-		log.Error(err)
+		log.Error().Msg(err.Error())
 		return nil, errors.Wrapf(err, "Failed to setup network for task %q: %v", id, err)
 	}
 	ipAddress, err := m.GetIPAddress(fn)
@@ -149,7 +150,7 @@ func (m *CNIManager) GetIPAddress(fn *types.Function) (string, error) {
 }
 func (m *CNIManager) GetIPAddressRaw(container string, PID uint32) (string, error) {
 	CNIDir := path.Join(m.config.NetworkSavePath, m.config.NetworkName)
-	log.Debug("search CNIDir: ", CNIDir)
+	log.Debug().Msgf("search CNIDir: %s", CNIDir)
 	files, err := os.ReadDir(CNIDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to read CNI dir for container %s: %v", container, err)
@@ -247,7 +248,6 @@ func (m *CNIManager) Uninstall() error {
 	command.Stdout = os.Stdout
 	command.Stdin = os.Stdin
 	command.Stderr = os.Stderr
-	fmt.Println(command)
 	if err := command.Run(); err != nil {
 		return err
 	}
@@ -256,7 +256,6 @@ func (m *CNIManager) Uninstall() error {
 	command.Stdout = os.Stdout
 	command.Stdin = os.Stdin
 	command.Stderr = os.Stderr
-	fmt.Println(command)
 	if err := command.Run(); err != nil {
 		return err
 	}
