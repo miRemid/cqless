@@ -103,3 +103,7 @@ type FunctionResources struct {
 type FunctionRemoveRequest struct {
 	FunctionName string `json:"functionName"`
 }
+
+type FunctionGetRequest struct {
+	FunctionName string `json:"functionName"`
+}

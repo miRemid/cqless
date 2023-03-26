@@ -6,6 +6,7 @@ require (
 	github.com/Mrs4s/MiraiGo v0.0.0-20230319092203-62d60f132203
 	github.com/containerd/go-cni v1.1.9
 	github.com/docker/docker v23.0.1+incompatible
+	github.com/gorilla/mux v1.8.0
 	github.com/mattn/go-colorable v0.1.13
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.0

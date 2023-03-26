@@ -14,7 +14,7 @@ func init() {
 	logrus.SetLevel(logrus.DebugLevel)
 }
 
-var test_config = types.NetworkConfig{
+var test_config = types.Network{
 	BinaryPath:      "/opt/cni/bin",
 	ConfigPath:      "/opt/cni/net.d",
 	ConfigFileName:  "10-cqless.conflist",

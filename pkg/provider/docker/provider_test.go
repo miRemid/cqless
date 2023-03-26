@@ -12,7 +12,7 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-var test_config = &types.NetworkConfig{
+var test_config = types.Network{
 	BinaryPath:      "/opt/cni/bin",
 	ConfigPath:      "/opt/cni/net.d",
 	ConfigFileName:  "10-cqless.conflist",
@@ -49,7 +49,7 @@ func Test_DeployImage(t *testing.T) {
 
 	p := NewProvider()
 	manager := new(cninetwork.CNIManager)
-	manager.InitNetwork(test_config)
+	manager.InitNetwork(&test_config)
 
 	p.Init()
 	t.Log("Connect to docker, prepare to pull the nginx:alpine\n")
@@ -67,7 +67,7 @@ func Test_Deploy_Inspect_Remove(t *testing.T) {
 	p := NewProvider()
 	p.Init()
 	manager := new(cninetwork.CNIManager)
-	manager.InitNetwork(test_config)
+	manager.InitNetwork(&test_config)
 
 	t.Log("Connect to docker, prepare to pull the nginx:alpine\n")
 	ctx := context.Background()

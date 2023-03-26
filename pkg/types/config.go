@@ -1,11 +1,14 @@
 package types
 
+import "time"
+
 type CQLessConfig struct {
-	Network *NetworkConfig `json:"network"`
-	Logger  LoggerConfig   `json:"logger"`
+	Network     *Network     `json:"network"`
+	Logger      *Logger      `json:"logger"`
+	ProxyClient *ProxyClient `json:"proxy_client"`
 }
 
-type NetworkConfig struct {
+type Network struct {
 	// BinaryPath CNI插件的绝对路径
 	BinaryPath string
 	// ConfigPath 存放CNI配置文件的路径
@@ -29,7 +32,13 @@ type NetworkConfig struct {
 	IfPrefix string
 }
 
-type LoggerConfig struct {
+type Logger struct {
 	SavePath string
 	Debug    bool
+}
+
+type ProxyClient struct {
+	Timeout             time.Duration
+	MaxIdleConns        int
+	MaxIdleConnsPerHost int
 }
