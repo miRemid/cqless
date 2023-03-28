@@ -1,4 +1,4 @@
-package provider
+package gateway
 
 import (
 	"io"
@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/miRemid/cqless/pkg/provider"
 	"github.com/miRemid/cqless/pkg/types"
 
 	"github.com/rs/zerolog/log"
@@ -18,7 +19,7 @@ const (
 	defaultContentType = "text/plain"
 )
 
-func (p *Provider) MakeProxyHandler(config *types.ProxyClient) http.HandlerFunc {
+func (gate *Gateway) MakeProxyHandler(config *types.ProxyClient) http.HandlerFunc {
 	proxyClient := NewProxyClientFromConfig(config)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Body != nil {
@@ -32,7 +33,7 @@ func (p *Provider) MakeProxyHandler(config *types.ProxyClient) http.HandlerFunc 
 			http.MethodGet,
 			http.MethodOptions,
 			http.MethodHead:
-			proxyRequest(w, r, proxyClient, p.plugin)
+			proxyRequest(w, r, proxyClient, gate.provider)
 
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -85,7 +86,7 @@ func NewProxyClient(timeout time.Duration, maxIdleConns int, maxIdleConnsPerHost
 }
 
 // proxyRequest handles the actual resolution of and then request to the function service.
-func proxyRequest(w http.ResponseWriter, originalReq *http.Request, proxyClient *http.Client, plugin ProviderPluginInterface) {
+func proxyRequest(w http.ResponseWriter, originalReq *http.Request, proxyClient *http.Client, plugin provider.ProviderPluginInterface) {
 	ctx := originalReq.Context()
 
 	pathVars := mux.Vars(originalReq)

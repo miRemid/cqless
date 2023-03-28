@@ -1,4 +1,4 @@
-package provider
+package gateway
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/miRemid/cqless/pkg/utils"
 )
 
-func (p *Provider) Remove(cni *cninetwork.CNIManager) http.HandlerFunc {
+func (gate *Gateway) Remove(cni *cninetwork.CNIManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Body == nil {
 			return
@@ -24,14 +24,14 @@ func (p *Provider) Remove(cni *cninetwork.CNIManager) http.HandlerFunc {
 			return
 		}
 		namespace := utils.GetNamespaceFromRequest(r)
-		if valid, err := p.plugin.ValidNamespace(namespace); err != nil {
+		if valid, err := gate.provider.ValidNamespace(namespace); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		} else if !valid {
 			http.Error(w, types.ErrNamespaceNotFound.Error(), http.StatusBadRequest)
 			return
 		}
-		if fn, err := p.plugin.Remove(context.Background(), req); err != nil {
+		if fn, err := gate.provider.Remove(context.Background(), req); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		} else if err := cni.DeleteCNINetwork(context.Background(), fn); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -40,5 +40,5 @@ func (p *Provider) Remove(cni *cninetwork.CNIManager) http.HandlerFunc {
 }
 
 func MakeRemoveHandler(cni *cninetwork.CNIManager) http.HandlerFunc {
-	return defaultProvider.Remove(cni)
+	return defaultGateway.Remove(cni)
 }

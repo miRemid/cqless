@@ -1,4 +1,4 @@
-package provider
+package gateway
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/miRemid/cqless/pkg/utils"
 )
 
-func (p *Provider) Deploy(cni *cninetwork.CNIManager, secretMountPath string, alwaysPull bool) http.HandlerFunc {
+func (gate *Gateway) Deploy(cni *cninetwork.CNIManager, secretMountPath string, alwaysPull bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Body == nil {
 			return
@@ -25,7 +25,7 @@ func (p *Provider) Deploy(cni *cninetwork.CNIManager, secretMountPath string, al
 			return
 		}
 		namespace := utils.GetRequestNamespace(req.Namespace)
-		if valid, err := p.plugin.ValidNamespace(namespace); err != nil {
+		if valid, err := gate.provider.ValidNamespace(namespace); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		} else if !valid {
@@ -38,7 +38,7 @@ func (p *Provider) Deploy(cni *cninetwork.CNIManager, secretMountPath string, al
 			return
 		}
 		ctx := context.Background()
-		fn, err := p.plugin.Deploy(ctx, req)
+		fn, err := gate.provider.Deploy(ctx, req)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -58,5 +58,5 @@ func (p *Provider) Deploy(cni *cninetwork.CNIManager, secretMountPath string, al
 }
 
 func MakeDeployHandler(cni *cninetwork.CNIManager, secretMountPath string, alwaysPull bool) http.HandlerFunc {
-	return defaultProvider.Deploy(cni, secretMountPath, alwaysPull)
+	return defaultGateway.Deploy(cni, secretMountPath, alwaysPull)
 }
