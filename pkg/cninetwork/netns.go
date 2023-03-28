@@ -19,7 +19,7 @@ import (
 
 var ErrLinkNotFound = errors.New("link not found")
 
-func WithNetNS(ns netns.NsHandle, work func() error) error {
+func WithNetNS(ns netns.NsHandle, work func() error) (err error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
@@ -29,7 +29,9 @@ func WithNetNS(ns netns.NsHandle, work func() error) error {
 
 		err = netns.Set(ns)
 		if err == nil {
-			defer netns.Set(oldNs)
+			defer func() {
+				err = netns.Set(oldNs)
+			}()
 
 			err = work()
 		}

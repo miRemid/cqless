@@ -17,7 +17,9 @@ var (
 )
 
 func init() {
-	p.Init(nil)
+	if err := p.Init(types.GetConfig()); err != nil {
+		panic(err)
+	}
 }
 
 func Test_Inspect(t *testing.T) {
@@ -42,7 +44,7 @@ func Test_PullImage(t *testing.T) {
 func Test_DeployImage(t *testing.T) {
 
 	manager := new(cninetwork.CNIManager)
-	manager.InitNetwork(types.GetConfig().Network)
+	assert.NilError(t, manager.InitNetwork(types.GetConfig().Network))
 
 	t.Log("Connect to docker, prepare to pull the nginx:alpine\n")
 	fn, err := p.Deploy(context.TODO(), types.FunctionCreateRequest{
@@ -57,7 +59,7 @@ func Test_DeployImage(t *testing.T) {
 
 func Test_Deploy_Inspect_Remove(t *testing.T) {
 	manager := new(cninetwork.CNIManager)
-	manager.InitNetwork(types.GetConfig().Network)
+	assert.NilError(t, manager.InitNetwork(types.GetConfig().Network))
 
 	t.Log("Connect to docker, prepare to pull the nginx:alpine\n")
 	ctx := context.Background()

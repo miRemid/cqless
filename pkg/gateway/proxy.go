@@ -139,7 +139,9 @@ func proxyRequest(w http.ResponseWriter, originalReq *http.Request, proxyClient 
 
 	w.WriteHeader(response.StatusCode)
 	if response.Body != nil {
-		io.Copy(w, response.Body)
+		if _, err := io.Copy(w, response.Body); err != nil {
+			log.Error().Msg(fmt.Sprintf("write proxy failed: %v", err))
+		}
 	}
 }
 
