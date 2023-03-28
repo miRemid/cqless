@@ -7,6 +7,7 @@
 *.dll
 *.so
 *.dylib
+cqless
 
 # Test binary, built with `go test -c`
 *.test
@@ -21,8 +22,10 @@
 go.work
 
 # wait for finish the module
-cmd
-main.go
+cmd/deploy.go
+cmd/invoke.go
+cmd/rm.go
+
 
 # test directory
 tempdata

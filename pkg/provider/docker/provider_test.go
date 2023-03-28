@@ -12,16 +12,12 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-var test_config = types.Network{
-	BinaryPath:      "/opt/cni/bin",
-	ConfigPath:      "/opt/cni/net.d",
-	ConfigFileName:  "10-cqless.conflist",
-	NetworkSavePath: "/opt/cni/net.d",
+var (
+	p = newProvider()
+)
 
-	IfPrefix:    "cqeth",
-	NetworkName: "cqless-cni-bridge",
-	BridgeName:  "cqless0",
-	SubNet:      "10.72.0.0/16",
+func init() {
+	p.Init(nil)
 }
 
 func Test_Inspect(t *testing.T) {
@@ -34,8 +30,6 @@ func Test_Inspect(t *testing.T) {
 }
 
 func Test_PullImage(t *testing.T) {
-	p := NewProvider()
-	p.Init()
 	t.Log("Connect to docker, prepare to pull the nginx:alpine")
 	err := p.pull(context.Background(), types.FunctionCreateRequest{
 		Image: "nginx:alpine",
@@ -47,11 +41,9 @@ func Test_PullImage(t *testing.T) {
 
 func Test_DeployImage(t *testing.T) {
 
-	p := NewProvider()
 	manager := new(cninetwork.CNIManager)
-	manager.InitNetwork(&test_config)
+	manager.InitNetwork(types.GetConfig().Network)
 
-	p.Init()
 	t.Log("Connect to docker, prepare to pull the nginx:alpine\n")
 	fn, err := p.Deploy(context.TODO(), types.FunctionCreateRequest{
 		Image: "nginx:alpine",
@@ -64,10 +56,8 @@ func Test_DeployImage(t *testing.T) {
 }
 
 func Test_Deploy_Inspect_Remove(t *testing.T) {
-	p := NewProvider()
-	p.Init()
 	manager := new(cninetwork.CNIManager)
-	manager.InitNetwork(&test_config)
+	manager.InitNetwork(types.GetConfig().Network)
 
 	t.Log("Connect to docker, prepare to pull the nginx:alpine\n")
 	ctx := context.Background()

@@ -1,4 +1,4 @@
-package utils
+package logger
 
 import (
 	"os"
@@ -16,20 +16,19 @@ TODO: Zerolog的初始化工作，包括但不限于
 - 格式优化
 */
 func init() {
-	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RubyDate}).
+	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RubyDate}).
 		Level(zerolog.TraceLevel).
 		With().
 		Timestamp().
 		Caller().
 		Int("pid", os.Getpid()).
 		Logger()
-	log.Logger = logger
 }
 
 func InitLogger(config *types.Logger) {
-	var logger zerolog.Logger
 	if config.Debug {
-		logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RubyDate}).
+		log.Info().Msg("running in debug mode")
+		log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RubyDate}).
 			Level(zerolog.DebugLevel).
 			With().
 			Timestamp().
@@ -37,11 +36,11 @@ func InitLogger(config *types.Logger) {
 			Int("pid", os.Getpid()).
 			Logger()
 	} else {
-		logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RubyDate}).
+		log.Info().Msg("running in non-debug mode")
+		log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RubyDate}).
 			Level(zerolog.InfoLevel).
 			With().
 			Timestamp().
 			Logger()
 	}
-	log.Logger = logger
 }

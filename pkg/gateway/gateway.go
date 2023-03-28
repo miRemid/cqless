@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/miRemid/cqless/pkg/provider"
+	"github.com/miRemid/cqless/pkg/provider/docker"
 	"github.com/miRemid/cqless/pkg/types"
 )
 
@@ -26,6 +28,15 @@ type Gateway struct {
 }
 
 func (gate *Gateway) Init(config *types.CQLessConfig) error {
+
+	providerType := strings.ToUpper(config.Gateway.Provider)
+	switch providerType {
+	case "DOCKER":
+		gate.provider = docker.NewProvider()
+	default:
+		gate.provider = docker.NewProvider()
+	}
+
 	if err := gate.provider.Init(config); err != nil {
 		return err
 	}

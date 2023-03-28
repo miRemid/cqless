@@ -16,13 +16,17 @@ type DockerProvider struct {
 	store *provider.FakeLabeller
 }
 
-func NewProvider() *DockerProvider {
+func newProvider() *DockerProvider {
 	var p = new(DockerProvider)
 	p.store = new(provider.FakeLabeller)
 	return p
 }
 
-func (p *DockerProvider) Init() error {
+func NewProvider() provider.ProviderPluginInterface {
+	return newProvider()
+}
+
+func (p *DockerProvider) Init(config *types.CQLessConfig) error {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return err

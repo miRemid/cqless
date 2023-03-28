@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -19,7 +20,11 @@ const (
 	defaultContentType = "text/plain"
 )
 
-func (gate *Gateway) MakeProxyHandler(config *types.ProxyClient) http.HandlerFunc {
+func MakeProxyHandler(config *types.Proxy) http.HandlerFunc {
+	return defaultGateway.MakeProxyHandler(config)
+}
+
+func (gate *Gateway) MakeProxyHandler(config *types.Proxy) http.HandlerFunc {
 	proxyClient := NewProxyClientFromConfig(config)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Body != nil {
@@ -43,7 +48,7 @@ func (gate *Gateway) MakeProxyHandler(config *types.ProxyClient) http.HandlerFun
 
 // NewProxyClientFromConfig creates a new http.Client designed for proxying requests and enforcing
 // certain minimum configuration values.
-func NewProxyClientFromConfig(config *types.ProxyClient) *http.Client {
+func NewProxyClientFromConfig(config *types.Proxy) *http.Client {
 	return NewProxyClient(config.Timeout, config.MaxIdleConns, config.MaxIdleConnsPerHost)
 }
 
@@ -105,7 +110,7 @@ func proxyRequest(w http.ResponseWriter, originalReq *http.Request, proxyClient 
 
 	proxyReq, err := buildProxyRequest(originalReq, functionAddr, pathVars["params"])
 	if err != nil {
-		http.Error(w, "Failed to resolve service: %s."+functionName, http.StatusServiceUnavailable)
+		http.Error(w, fmt.Sprintf("Failed to resolve service: %s.", functionName), http.StatusServiceUnavailable)
 		return
 	}
 
@@ -118,7 +123,7 @@ func proxyRequest(w http.ResponseWriter, originalReq *http.Request, proxyClient 
 	seconds := time.Since(start)
 
 	if err != nil {
-		http.Error(w, "Can't reach service for: %s."+functionName, http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Can't reach service for: %s.", functionName), http.StatusInternalServerError)
 		return
 	}
 
