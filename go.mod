@@ -8,6 +8,7 @@ require (
 	github.com/docker/docker v23.0.1+incompatible
 	github.com/gorilla/mux v1.8.0
 	github.com/mattn/go-colorable v0.1.13
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.0
 	github.com/sirupsen/logrus v1.9.0
@@ -34,7 +35,6 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
-	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/term v0.0.0-20221205130635-1aeaba878587 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
