@@ -31,3 +31,4 @@ cmd/rm.go
 tempdata
 .vscode
 hosts
+message.json

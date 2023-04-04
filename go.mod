@@ -7,6 +7,7 @@ require (
 	github.com/containerd/go-cni v1.1.9
 	github.com/docker/docker v23.0.1+incompatible
 	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/websocket v1.5.0
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/pkg/errors v0.9.1

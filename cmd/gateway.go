@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/miRemid/cqless/pkg/cninetwork"
+	"github.com/miRemid/cqless/pkg/cqhttp"
 	"github.com/miRemid/cqless/pkg/gateway"
 	"github.com/miRemid/cqless/pkg/middleware"
 	"github.com/miRemid/cqless/pkg/types"
@@ -78,9 +79,12 @@ func runGateway(cmd *cobra.Command, args []string) error {
 	route.HandleFunc("/cqless/function", gateway.MakeRemoveHandler(cni)).Methods(http.MethodDelete)
 	// route.HandleFunc("/cqless/function", gateway.MakeDeployHandler(cni, "", false)).Methods(http.MethodPut)
 
-	route.HandleFunc("/function/{name:["+NameExpression+"]+}", proxyHandler).Methods(http.MethodGet)
-	route.HandleFunc("/function/{name:["+NameExpression+"]+}/", proxyHandler).Methods(http.MethodGet)
-	route.HandleFunc("/function/{name:["+NameExpression+"]+}/{params:.*}", proxyHandler).Methods(http.MethodGet)
+	route.HandleFunc("/function/{name:["+NameExpression+"]+}", proxyHandler).Methods(http.MethodPost)
+	route.HandleFunc("/function/{name:["+NameExpression+"]+}/", proxyHandler).Methods(http.MethodPost)
+	route.HandleFunc("/function/{name:["+NameExpression+"]+}/{params:.*}", proxyHandler).Methods(http.MethodPost)
+
+	// CQHTTP Websocket
+	route.HandleFunc("/", cqhttp.WebsocketHandler).Methods(http.MethodPost, http.MethodGet)
 
 	printEndpoints(route)
 
