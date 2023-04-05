@@ -26,7 +26,7 @@ func NewProvider() provider.ProviderPluginInterface {
 	return newProvider()
 }
 
-func (p *DockerProvider) Init(config *types.CQLessConfig) error {
+func (p *DockerProvider) Init(config *types.GatewayConfig) error {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return err

@@ -10,15 +10,14 @@ import (
 )
 
 const (
-	defaultSavePath = ".local/share/cqless"
-	defaultCNIPath  = "cni"
-	defaultLogPath  = "log"
+	defaultCNIPath = "cni"
+	defaultLogPath = "log"
 )
 
 var (
-	home              = os.Getenv("HOME")
-	defaultConfigPath = path.Join(home, defaultSavePath)
-	config            = new(CQLessConfig)
+	home                = os.Getenv("HOME")
+	DEFAULT_CONFIG_PATH = path.Join(home, DEFAULT_SAVE_PATH)
+	config              = new(CQLessConfig)
 )
 
 func GetConfig() *CQLessConfig {
@@ -26,38 +25,38 @@ func GetConfig() *CQLessConfig {
 }
 
 func init() {
-	if err := os.MkdirAll(defaultConfigPath, 0775); err != nil {
+	if err := os.MkdirAll(DEFAULT_CONFIG_PATH, 0775); err != nil {
 		panic(err)
 	}
 	viper.SetConfigName("cqless")
 	viper.SetConfigType("yaml")
-	viper.SetDefault("network", Network{
+	viper.SetDefault("network", NetworkConfig{
 		BinaryPath:      "/opt/cni/bin",
-		ConfigPath:      path.Join(defaultConfigPath, defaultCNIPath),
+		ConfigPath:      path.Join(DEFAULT_CONFIG_PATH, defaultCNIPath),
 		ConfigFileName:  "10-cqless.conflist",
-		NetworkSavePath: path.Join(defaultConfigPath, defaultCNIPath),
+		NetworkSavePath: path.Join(DEFAULT_CONFIG_PATH, defaultCNIPath),
 		NamespaceFormat: "cqless-%s",
 		IfPrefix:        "cqeth",
 		NetworkName:     "cqless-cni-bridge",
 		BridgeName:      "cqless0",
 		SubNet:          "10.72.0.0/16",
 	})
-	viper.SetDefault("logger", Logger{
+	viper.SetDefault("logger", LoggerConfig{
 		Debug:    true,
-		SavePath: path.Join(defaultConfigPath, defaultLogPath),
+		SavePath: path.Join(DEFAULT_CONFIG_PATH, defaultLogPath),
 	})
-	viper.SetDefault("proxy", Proxy{
+	viper.SetDefault("proxy", ProxyConfig{
 		Timeout:             10 * time.Second,
 		MaxIdleConns:        30,
 		MaxIdleConnsPerHost: 30,
 	})
-	viper.SetDefault("gateway", Gateway{
+	viper.SetDefault("gateway", GatewayConfig{
 		Port:         5566,
 		ReadTimeout:  60 * time.Second,
 		WriteTimeout: 60 * time.Second,
 		Provider:     "docker",
 	})
-	viper.AddConfigPath(defaultConfigPath)
+	viper.AddConfigPath(DEFAULT_CONFIG_PATH)
 	if err := viper.SafeWriteConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileAlreadyExistsError); !ok {
 			panic(err)
@@ -74,13 +73,13 @@ func init() {
 }
 
 type CQLessConfig struct {
-	Network *Network `yaml:"network" mapstructure:"network"`
-	Logger  *Logger  `yaml:"logger" mapstructure:"logger"`
-	Proxy   *Proxy   `yaml:"proxy" mapstructure:"proxy"`
-	Gateway *Gateway `yaml:"gateway" mapstructure:"gateway"`
+	Network *NetworkConfig `yaml:"network" mapstructure:"network"`
+	Logger  *LoggerConfig  `yaml:"logger" mapstructure:"logger"`
+	Proxy   *ProxyConfig   `yaml:"proxy" mapstructure:"proxy"`
+	Gateway *GatewayConfig `yaml:"gateway" mapstructure:"gateway"`
 }
 
-type Network struct {
+type NetworkConfig struct {
 	// BinaryPath CNI插件的绝对路径
 	BinaryPath string `yaml:"binary_path" mapstructure:"binary_path"`
 	// ConfigPath 存放CNI配置文件的路径
@@ -104,18 +103,18 @@ type Network struct {
 	IfPrefix string `yaml:"if_prefix" mapstructure:"if_prefix"`
 }
 
-type Logger struct {
+type LoggerConfig struct {
 	SavePath string `yaml:"save_path" mapstructure:"save_path"`
 	Debug    bool   `yaml:"debug_mode" mapstructure:"debug_mode"`
 }
 
-type Proxy struct {
+type ProxyConfig struct {
 	Timeout             time.Duration `yaml:"timeout" mapstructure:"timeout"`
 	MaxIdleConns        int           `yaml:"max_idle_conns" mapstructure:"max_idle_conns"`
 	MaxIdleConnsPerHost int           `yaml:"max_idle_conns_per_host" mapstructure:"max_idle_conns_per_host"`
 }
 
-type Gateway struct {
+type GatewayConfig struct {
 	Provider     string        `yaml:"provider_type" mapstructure:"provider_type"`
 	Port         int           `yaml:"port" mapstructure:"port"`
 	ReadTimeout  time.Duration `yaml:"read_timeout" mapstructure:"read_timeout"`

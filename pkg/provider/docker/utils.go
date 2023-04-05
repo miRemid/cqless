@@ -58,7 +58,7 @@ func (p *DockerProvider) getFunction(ctx context.Context, fnName string) (*types
 
 // Mount 宿主机的DNS信息和Hosts信息到容器中
 func (p *DockerProvider) getOSMounts() []mount.Mount {
-	hostsDir := "/var/lib/cqless"
+	hostsDir := types.DEFAULT_CONFIG_PATH
 	if v, ok := os.LookupEnv("hosts_dir"); ok && len(v) > 0 {
 		hostsDir = v
 	}

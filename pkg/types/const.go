@@ -5,4 +5,5 @@ const (
 	NAMESPACE_LABEL            = "cqless"
 
 	DEFAULT_ANNOTATION_LABEL_PREFIX = "com.cqless.annotations"
+	DEFAULT_SAVE_PATH               = ".local/share/cqless"
 )

@@ -8,7 +8,7 @@ import (
 )
 
 type ProviderPluginInterface interface {
-	Init(*types.CQLessConfig) error // 初始化Plugin
+	Init(*types.GatewayConfig) error // 初始化Plugin
 
 	ValidNamespace(string) (bool, error) // 检查Namespace
 

@@ -25,7 +25,7 @@ func init() {
 		Logger()
 }
 
-func InitLogger(config *types.Logger) {
+func InitLogger(config *types.LoggerConfig) {
 	if config.Debug {
 		log.Info().Msg("running in debug mode")
 		log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RubyDate}).

@@ -17,7 +17,7 @@ var (
 )
 
 func init() {
-	if err := p.Init(types.GetConfig()); err != nil {
+	if err := p.Init(types.GetConfig().Gateway); err != nil {
 		panic(err)
 	}
 }

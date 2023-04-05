@@ -1,17 +1,17 @@
 package middleware
 
 import (
-	"net/http"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 )
 
-func Logger(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func Logger() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
 		start := time.Now()
-		next.ServeHTTP(w, r)
+		ctx.Next()
 		used := time.Since(start)
-		log.Info().Str("path", r.URL.Path).Dur("used", used).Send()
-	})
+		log.Info().Str("path", ctx.Request.RequestURI).Dur("used", used).Send()
+	}
 }

@@ -56,7 +56,7 @@ func init() {
 
 type CNIManager struct {
 	cli    gocni.CNI
-	config *types.Network
+	config *types.NetworkConfig
 }
 
 func (m *CNIManager) GenerateJSON() []byte {
@@ -70,7 +70,7 @@ func (m *CNIManager) GenerateJSON() []byte {
 
 // InitNetwork initialize the default cni network for all
 // function containers
-func (m *CNIManager) InitNetwork(config *types.Network) error {
+func (m *CNIManager) InitNetwork(config *types.NetworkConfig) error {
 	m.config = config
 
 	if !dirExists(config.ConfigPath) {
@@ -99,7 +99,7 @@ func (m *CNIManager) InitNetwork(config *types.Network) error {
 }
 
 // InitNetwork initialize the default cni manager
-func InitNetwork(config *types.Network) error {
+func InitNetwork(config *types.NetworkConfig) error {
 	return defaultManager.InitNetwork(config)
 }
 

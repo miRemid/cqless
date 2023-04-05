@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/cqhttp"
 	"github.com/miRemid/cqless/pkg/gateway"
@@ -20,13 +20,11 @@ import (
 const NameExpression = "-a-zA-Z_0-9."
 
 var (
-	route  *mux.Router
 	config = types.GetConfig()
 	cni    *cninetwork.CNIManager
 )
 
 func init() {
-	route = mux.NewRouter()
 	cni = new(cninetwork.CNIManager)
 }
 
@@ -48,45 +46,38 @@ func init() {
 	rootCmd.AddCommand(gatewayCmd)
 }
 
-func printEndpoints(r *mux.Router) {
-	if err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		methods, err := route.GetMethods()
-		if err != nil {
-			return err
-		}
-		path, err := route.GetPathTemplate()
-		if err != nil {
-			return nil
-		}
-		log.Debug().Str("path", path).Strs("methods", methods).Send()
-		return nil
-	}); err != nil {
-		log.Error().Err(err).Send()
-	}
-}
-
 func runGateway(cmd *cobra.Command, args []string) error {
 
 	if err := gateway.Init(config); err != nil {
 		return err
 	}
-
+	if err := cni.InitNetwork(config.Network); err != nil {
+		return err
+	}
+	route := gin.New()
+	route.Use(middleware.Logger())
 	proxyHandler := gateway.MakeProxyHandler(config.Proxy)
 
-	route.Use(middleware.Logger)
+	cqless := route.Group("/cqless")
+	{
+		cqless.POST("/function", gateway.MakeDeployHandler(cni, "", false))
+		cqless.DELETE("/function", gateway.MakeRemoveHandler(cni))
+	}
 
-	route.HandleFunc("/cqless/function", gateway.MakeDeployHandler(cni, "", false)).Methods(http.MethodPost)
-	route.HandleFunc("/cqless/function", gateway.MakeRemoveHandler(cni)).Methods(http.MethodDelete)
+	function := route.Group("/function")
+	{
+		function.POST("/:name", proxyHandler)
+		// function.POST("/function/:name/", proxyHandler)
+		function.POST("/:name/:params", proxyHandler)
+	}
+
 	// route.HandleFunc("/cqless/function", gateway.MakeDeployHandler(cni, "", false)).Methods(http.MethodPut)
 
-	route.HandleFunc("/function/{name:["+NameExpression+"]+}", proxyHandler).Methods(http.MethodPost)
-	route.HandleFunc("/function/{name:["+NameExpression+"]+}/", proxyHandler).Methods(http.MethodPost)
-	route.HandleFunc("/function/{name:["+NameExpression+"]+}/{params:.*}", proxyHandler).Methods(http.MethodPost)
-
 	// CQHTTP Websocket
-	route.HandleFunc("/", cqhttp.WebsocketHandler).Methods(http.MethodPost, http.MethodGet)
-
-	printEndpoints(route)
+	cq := route.Group("/cqhttp")
+	{
+		cq.Match([]string{http.MethodGet, http.MethodPost}, "", cqhttp.WebsocketHandler)
+	}
 
 	server := &http.Server{
 		Addr:           fmt.Sprintf(":%d", config.Gateway.Port),

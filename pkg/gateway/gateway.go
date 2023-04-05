@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -12,24 +13,27 @@ import (
 )
 
 var (
-	defaultGateway *Gateway
+	defaultGateway     *Gateway
+	defaultProxyClient *http.Client
 )
 
 func init() {
 	defaultGateway = new(Gateway)
+	defaultProxyClient = http.DefaultClient
 }
 
 func Init(config *types.CQLessConfig) error {
-	return defaultGateway.Init(config)
+	defaultProxyClient = provider.NewProxyClientFromConfig(config.Proxy)
+	return defaultGateway.Init(config.Gateway)
 }
 
 type Gateway struct {
 	provider provider.ProviderPluginInterface
 }
 
-func (gate *Gateway) Init(config *types.CQLessConfig) error {
+func (gate *Gateway) Init(config *types.GatewayConfig) error {
 
-	providerType := strings.ToUpper(config.Gateway.Provider)
+	providerType := strings.ToUpper(config.Provider)
 	switch providerType {
 	case "DOCKER":
 		gate.provider = docker.NewProvider()
