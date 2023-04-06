@@ -100,10 +100,18 @@ type FunctionResources struct {
 	CPU    string `json:"cpu,omitempty"`
 }
 
-type FunctionRemoveRequest struct {
+type FunctionRequest struct {
 	FunctionName string `json:"function_name"`
 }
 
+type FunctionRemoveRequest struct {
+	FunctionRequest
+}
+
 type FunctionGetRequest struct {
-	FunctionName string `json:"function_name"`
+	FunctionRequest
+}
+
+type FunctionInvokeRequest struct {
+	FunctionRequest
 }

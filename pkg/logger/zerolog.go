@@ -27,7 +27,7 @@ func init() {
 
 func InitLogger(config *types.LoggerConfig) {
 	if config.Debug {
-		log.Info().Msg("running in debug mode")
+		log.Debug().Msg("running in debug mode")
 		log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RubyDate}).
 			Level(zerolog.DebugLevel).
 			With().
@@ -36,7 +36,6 @@ func InitLogger(config *types.LoggerConfig) {
 			Int("pid", os.Getpid()).
 			Logger()
 	} else {
-		log.Info().Msg("running in non-debug mode")
 		log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RubyDate}).
 			Level(zerolog.InfoLevel).
 			With().

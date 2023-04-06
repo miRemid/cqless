@@ -3,5 +3,5 @@ package types
 import "errors"
 
 var (
-	ErrNamespaceNotFound = errors.New("errors not found")
+	ErrNamespaceNotFound = errors.New("namespace not found")
 )

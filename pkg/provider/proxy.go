@@ -57,7 +57,7 @@ func NewProxyClient(timeout time.Duration, maxIdleConns int, maxIdleConnsPerHost
 }
 
 func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPluginInterface, cni *cninetwork.CNIManager) {
-	w, originalReq := ctx.Writer, ctx.Request
+	// w, originalReq := ctx.Writer, ctx.Request
 	functionName := ctx.Param("name")
 	if functionName == "" {
 		httputil.BadRequest(ctx, httputil.Response{
@@ -77,6 +77,7 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 
 	functionAddr, resolveErr := plugin.Resolve(ctx, functionName, cni)
 	if resolveErr != nil {
+		log.Err(resolveErr).Send()
 		httputil.BadRequest(ctx, httputil.Response{
 			Code:    httputil.ProxyBadRequest,
 			Message: "No endpoints available for: " + functionName,
@@ -87,6 +88,7 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 
 	proxyReq, err := buildProxyRequest(ctx.Request, functionAddr, ctx.Param("params"))
 	if err != nil {
+		log.Err(err).Send()
 		httputil.BadRequest(ctx, httputil.Response{
 			Code:    httputil.ProxyBadRequest,
 			Message: fmt.Sprintf("Failed to resolve service: %s.", functionName),
@@ -103,26 +105,24 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 	seconds := time.Since(start)
 
 	if err != nil {
+		log.Err(err).Send()
 		httputil.BadRequest(ctx, httputil.Response{
 			Code:    httputil.ProxyInternalServerError,
 			Message: fmt.Sprintf("Can't reach service for: %s.", functionName),
 		})
 		return
 	}
-
-	if response.Body != nil {
-		defer response.Body.Close()
-	}
+	defer response.Body.Close()
 
 	log.Printf("%s took %f seconds\n", functionName, seconds.Seconds())
 
-	clientHeader := w.Header()
+	clientHeader := ctx.Writer.Header()
 	copyHeaders(clientHeader, &response.Header)
-	w.Header().Set("Content-Type", getContentType(originalReq.Header, response.Header))
+	ctx.Writer.Header().Set("Content-Type", getContentType(ctx.Request.Header, response.Header))
 
-	w.WriteHeader(response.StatusCode)
+	ctx.Writer.WriteHeader(response.StatusCode)
 	if response.Body != nil {
-		if _, err := io.Copy(w, response.Body); err != nil {
+		if _, err := io.Copy(ctx.Writer, response.Body); err != nil {
 			log.Error().Msg(fmt.Sprintf("write proxy failed: %v", err))
 		}
 	}

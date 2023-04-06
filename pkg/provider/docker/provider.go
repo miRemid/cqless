@@ -37,6 +37,7 @@ func (p *DockerProvider) Close() {
 }
 
 func (p *DockerProvider) ValidNamespace(namespace string) (bool, error) {
+	// TODO: 目前Docker仅支持默认namespace
 	if namespace == types.DEFAULT_FUNCTION_NAMESPACE {
 		return true, nil
 	}

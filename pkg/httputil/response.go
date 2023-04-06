@@ -1,7 +1,7 @@
 package httputil
 
 type Response struct {
-	Code    int
-	Message string
-	Data    any
+	Code    int    `json:"status"`
+	Message string `json:"message"`
+	Data    any    `json:"data"`
 }

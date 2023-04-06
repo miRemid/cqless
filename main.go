@@ -17,12 +17,10 @@ package main
 
 import (
 	"github.com/miRemid/cqless/cmd"
-	"github.com/miRemid/cqless/pkg/logger"
-	"github.com/miRemid/cqless/pkg/types"
 )
 
 func main() {
-	logger.InitLogger(types.GetConfig().Logger)
+	// logger.InitLogger(types.GetConfig().Logger)
 
 	cmd.Execute()
 }

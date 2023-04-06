@@ -41,7 +41,7 @@ func (p *DockerProvider) createFunction(info dtypes.ContainerJSON, fnName string
 
 func (p *DockerProvider) getFunction(ctx context.Context, fnName string, cni *cninetwork.CNIManager) (*types.Function, error) {
 	// TODO: 目前寻找函数的方式过于粗暴，优化为O(1)如使用Label
-	log.Debug().Str("name", fnName).Send()
+	log.Debug().Str("getFunction.fnName", fnName).Send()
 	filter := filters.NewArgs(filters.Arg("name", fnName))
 	containers, err := p.cli.ContainerList(ctx, dtypes.ContainerListOptions{
 		Filters: filter,
@@ -49,8 +49,11 @@ func (p *DockerProvider) getFunction(ctx context.Context, fnName string, cni *cn
 	if err != nil {
 		return nil, err
 	}
-	if len(containers) == 0 {
+	if len(containers) > 1 {
 		return nil, errors.New("get more than 1 function container")
+	}
+	if len(containers) == 0 {
+		return nil, errors.New("function not found, containers = 0")
 	}
 	var info dtypes.ContainerJSON
 	var found = false

@@ -58,7 +58,9 @@ func Test_DeployImage(t *testing.T) {
 
 func Test_RemoveImage(t *testing.T) {
 	_, err := p.Remove(context.Background(), types.FunctionRemoveRequest{
-		FunctionName: "nginx",
+		FunctionRequest: types.FunctionRequest{
+			FunctionName: "nginx",
+		},
 	}, cninetwork.DefaultManager)
 	assert.NilError(t, err)
 }
@@ -77,7 +79,9 @@ func Test_Deploy_Inspect_Remove(t *testing.T) {
 	assert.NilError(t, err)
 	defer func() {
 		_, err = p.Remove(ctx, types.FunctionRemoveRequest{
-			FunctionName: "nginx",
+			FunctionRequest: types.FunctionRequest{
+				FunctionName: "nginx",
+			},
 		}, cninetwork.DefaultManager)
 		assert.NilError(t, err)
 	}()

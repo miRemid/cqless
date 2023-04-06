@@ -12,6 +12,6 @@ func Logger() gin.HandlerFunc {
 		start := time.Now()
 		ctx.Next()
 		used := time.Since(start)
-		log.Info().Str("path", ctx.Request.RequestURI).Dur("used", used).Send()
+		log.Info().Str("path", ctx.Request.RequestURI).Dur("used", used).Str("method", ctx.Request.Method).Send()
 	}
 }

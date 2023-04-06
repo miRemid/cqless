@@ -11,6 +11,7 @@ import (
 	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/cqhttp"
 	"github.com/miRemid/cqless/pkg/gateway"
+	"github.com/miRemid/cqless/pkg/logger"
 	"github.com/miRemid/cqless/pkg/middleware"
 	"github.com/miRemid/cqless/pkg/types"
 	"github.com/rs/zerolog/log"
@@ -18,10 +19,6 @@ import (
 )
 
 const NameExpression = "-a-zA-Z_0-9."
-
-var (
-	config = types.GetConfig()
-)
 
 // gatewayCmd represents the gateway command
 var gatewayCmd = &cobra.Command{
@@ -43,6 +40,7 @@ func init() {
 
 func runGateway(cmd *cobra.Command, args []string) error {
 
+	logger.InitLogger(types.GetConfig().Logger)
 	if err := gateway.Init(config); err != nil {
 		return err
 	}
@@ -50,6 +48,7 @@ func runGateway(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	route := gin.New()
+	route.Use(gin.Recovery())
 	route.Use(middleware.Logger())
 	proxyHandler := gateway.MakeProxyHandler(config.Proxy)
 

@@ -23,9 +23,6 @@ go.work
 
 # wait for finish the module
 cmd/deploy.go
-cmd/invoke.go
-cmd/rm.go
-
 
 # test directory
 tempdata
