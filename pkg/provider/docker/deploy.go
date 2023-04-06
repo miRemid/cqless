@@ -3,7 +3,9 @@ package docker
 import (
 	"context"
 
+	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/types"
+	"github.com/rs/zerolog/log"
 
 	dtypes "github.com/docker/docker/api/types" // docker types
 	"github.com/docker/docker/api/types/container"
@@ -75,7 +77,7 @@ func (p *DockerProvider) pull(ctx context.Context, req types.FunctionCreateReque
 	return nil
 }
 
-func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateRequest) (*types.Function, error) {
+func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateRequest, cni *cninetwork.CNIManager) (*types.Function, error) {
 	log.Printf("start to pull %s\n", req.Image)
 	err := p.pull(ctx, req)
 	if err != nil {
@@ -125,5 +127,14 @@ func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateReq
 		return nil, err
 	}
 	fn := p.createFunction(info, req.Name)
+	_, err = cni.CreateCNINetwork(ctx, fn)
+	if err != nil {
+		return nil, err
+	}
+	ip, err := cni.GetIPAddress(fn)
+	if err != nil {
+		return nil, err
+	}
+	fn.IPAddress = ip
 	return fn, nil
 }

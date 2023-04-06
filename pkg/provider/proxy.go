@@ -10,13 +10,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/httputil"
 	"github.com/miRemid/cqless/pkg/types"
 	"github.com/rs/zerolog/log"
 )
 
 const (
-	watchdogPort       = "8080"
+	WatchdogPort       = "8080"
 	defaultContentType = "text/plain"
 	nameExpression     = "[a-zA-Z0-9.]+"
 )
@@ -55,7 +56,7 @@ func NewProxyClient(timeout time.Duration, maxIdleConns int, maxIdleConnsPerHost
 	}
 }
 
-func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPluginInterface) {
+func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPluginInterface, cni *cninetwork.CNIManager) {
 	w, originalReq := ctx.Writer, ctx.Request
 	functionName := ctx.Param("name")
 	if functionName == "" {
@@ -74,7 +75,7 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 		return
 	}
 
-	functionAddr, resolveErr := plugin.Resolve(ctx, functionName)
+	functionAddr, resolveErr := plugin.Resolve(ctx, functionName, cni)
 	if resolveErr != nil {
 		httputil.BadRequest(ctx, httputil.Response{
 			Code:    httputil.ProxyBadRequest,
@@ -133,7 +134,7 @@ func buildProxyRequest(originalReq *http.Request, baseURL url.URL, extraPath str
 
 	host := baseURL.Host
 	if baseURL.Port() == "" {
-		host = baseURL.Host + ":" + watchdogPort
+		host = baseURL.Host + ":" + WatchdogPort
 	}
 
 	url := url.URL{

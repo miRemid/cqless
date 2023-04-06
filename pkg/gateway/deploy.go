@@ -11,7 +11,7 @@ import (
 	"github.com/miRemid/cqless/pkg/utils"
 )
 
-func (gate *Gateway) Deploy(cni *cninetwork.CNIManager, secretMountPath string, alwaysPull bool) gin.HandlerFunc {
+func (gate *Gateway) MakeDeployHandler(cni *cninetwork.CNIManager, secretMountPath string, alwaysPull bool) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if ctx.Request.Body == nil {
 			return
@@ -49,7 +49,7 @@ func (gate *Gateway) Deploy(cni *cninetwork.CNIManager, secretMountPath string, 
 			})
 			return
 		}
-		fn, err := gate.provider.Deploy(ctx, req)
+		fn, err := gate.provider.Deploy(ctx, req, cni)
 		if err != nil {
 			httputil.BadRequest(ctx, httputil.Response{
 				Code:    httputil.StatusInternalServerError,
@@ -57,26 +57,13 @@ func (gate *Gateway) Deploy(cni *cninetwork.CNIManager, secretMountPath string, 
 			})
 			return
 		}
-		_, err = cni.CreateCNINetwork(ctx, fn)
-		if err != nil {
-			httputil.BadRequest(ctx, httputil.Response{
-				Code:    httputil.StatusInternalServerError,
-				Message: err.Error(),
-			})
-			return
-		}
-		ip, err := cni.GetIPAddress(fn)
-		if err != nil {
-			httputil.BadRequest(ctx, httputil.Response{
-				Code:    httputil.StatusInternalServerError,
-				Message: err.Error(),
-			})
-			return
-		}
-		fn.IPAddress = ip
+		httputil.OK(ctx, httputil.Response{
+			Code: httputil.StatusOK,
+			Data: fn,
+		})
 	}
 }
 
-func MakeDeployHandler(cni *cninetwork.CNIManager, secretMountPath string, alwaysPull bool) gin.HandlerFunc {
-	return defaultGateway.Deploy(cni, secretMountPath, alwaysPull)
+func MakeDeployHandler(secretMountPath string, alwaysPull bool) gin.HandlerFunc {
+	return defaultGateway.MakeDeployHandler(cninetwork.DefaultManager, secretMountPath, alwaysPull)
 }

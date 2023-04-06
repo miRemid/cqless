@@ -15,10 +15,8 @@ import (
 	gocni "github.com/containerd/go-cni"
 	"github.com/miRemid/cqless/pkg/types"
 	"github.com/pkg/errors"
-	zerolog "github.com/rs/zerolog/log"
+	"github.com/rs/zerolog/log"
 )
-
-var log = zerolog.With().Str("pkg", "cni").Logger()
 
 var cniconf = `
 {
@@ -47,11 +45,11 @@ var cniconf = `
 `
 
 var (
-	defaultManager *CNIManager
+	DefaultManager *CNIManager
 )
 
 func init() {
-	defaultManager = new(CNIManager)
+	DefaultManager = new(CNIManager)
 }
 
 type CNIManager struct {
@@ -70,28 +68,28 @@ func (m *CNIManager) GenerateJSON() []byte {
 
 // InitNetwork initialize the default cni network for all
 // function containers
-func (m *CNIManager) InitNetwork(config *types.NetworkConfig) error {
-	m.config = config
+func (m *CNIManager) Init(config *types.CQLessConfig) error {
+	m.config = config.Network
 
-	if !dirExists(config.ConfigPath) {
-		if err := os.MkdirAll(config.ConfigPath, 0755); err != nil {
+	if !dirExists(m.config.ConfigPath) {
+		if err := os.MkdirAll(m.config.ConfigPath, 0755); err != nil {
 			return err
 		}
 	}
-	netConfig := path.Join(config.ConfigPath, config.ConfigFileName)
+	netConfig := path.Join(m.config.ConfigPath, m.config.ConfigFileName)
 	if err := os.WriteFile(netConfig, m.GenerateJSON(), 0644); err != nil {
 		return err
 	}
 
 	cni, err := gocni.New(
-		gocni.WithPluginConfDir(config.ConfigPath),
-		gocni.WithPluginDir([]string{config.BinaryPath}),
-		gocni.WithInterfacePrefix(config.IfPrefix),
+		gocni.WithPluginConfDir(m.config.ConfigPath),
+		gocni.WithPluginDir([]string{m.config.BinaryPath}),
+		gocni.WithInterfacePrefix(m.config.IfPrefix),
 	)
 	if err != nil {
 		return err
 	}
-	if err := cni.Load(gocni.WithLoNetwork, gocni.WithConfListFile(filepath.Join(config.ConfigPath, config.ConfigFileName))); err != nil {
+	if err := cni.Load(gocni.WithLoNetwork, gocni.WithConfListFile(filepath.Join(m.config.ConfigPath, m.config.ConfigFileName))); err != nil {
 		return err
 	}
 	m.cli = cni
@@ -99,8 +97,8 @@ func (m *CNIManager) InitNetwork(config *types.NetworkConfig) error {
 }
 
 // InitNetwork initialize the default cni manager
-func InitNetwork(config *types.NetworkConfig) error {
-	return defaultManager.InitNetwork(config)
+func Init(config *types.CQLessConfig) error {
+	return DefaultManager.Init(config)
 }
 
 // DeleteCNINetwork deletes a CNI network based on container's id and pid
@@ -119,7 +117,7 @@ func (m *CNIManager) DeleteCNINetwork(ctx context.Context, fn *types.Function) e
 }
 
 func DeleteCNINetwork(ctx context.Context, fn *types.Function) error {
-	return defaultManager.DeleteCNINetwork(ctx, fn)
+	return DefaultManager.DeleteCNINetwork(ctx, fn)
 }
 
 // CreateCNINetwork creates a CNI network interface and attaches it to the context
@@ -141,7 +139,7 @@ func (m *CNIManager) CreateCNINetwork(ctx context.Context, fn *types.Function) (
 }
 
 func CreateCNINetwork(ctx context.Context, fn *types.Function) (*gocni.Result, error) {
-	return defaultManager.CreateCNINetwork(ctx, fn)
+	return DefaultManager.CreateCNINetwork(ctx, fn)
 }
 
 // GetIPAddress returns the IP address from container based on container name and PID
@@ -174,10 +172,10 @@ func (m *CNIManager) GetIPAddressRaw(container string, PID uint32) (string, erro
 	return "", fmt.Errorf("unable to get IP address for container: %s", container)
 }
 func GetIPAddress(fn *types.Function) (string, error) {
-	return defaultManager.GetIPAddress(fn)
+	return DefaultManager.GetIPAddress(fn)
 }
 func GetIPAddressRaw(container string, PID uint32) (string, error) {
-	return defaultManager.GetIPAddressRaw(container, PID)
+	return DefaultManager.GetIPAddressRaw(container, PID)
 }
 
 // CNIGateway returns the gateway for default subnet
@@ -192,7 +190,7 @@ func (m *CNIManager) CNIGateway() (string, error) {
 }
 
 func CNIGateway() (string, error) {
-	return defaultManager.CNIGateway()
+	return DefaultManager.CNIGateway()
 }
 
 // isCNIResultForPID confirms if the CNI result file contains the
@@ -263,7 +261,7 @@ func (m *CNIManager) Uninstall() error {
 }
 
 func Uninstall() error {
-	return defaultManager.Uninstall()
+	return DefaultManager.Uninstall()
 }
 
 func dirExists(dirname string) bool {

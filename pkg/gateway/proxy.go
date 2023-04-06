@@ -4,16 +4,17 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/httputil"
 	"github.com/miRemid/cqless/pkg/provider"
 	"github.com/miRemid/cqless/pkg/types"
 )
 
 func MakeProxyHandler(config *types.ProxyConfig) gin.HandlerFunc {
-	return defaultGateway.MakeProxyHandler(config)
+	return defaultGateway.MakeProxyHandler(config, cninetwork.DefaultManager)
 }
 
-func (gate *Gateway) MakeProxyHandler(config *types.ProxyConfig) gin.HandlerFunc {
+func (gate *Gateway) MakeProxyHandler(config *types.ProxyConfig, cni *cninetwork.CNIManager) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if ctx.Request.Body != nil {
 			defer ctx.Request.Body.Close()
@@ -26,7 +27,7 @@ func (gate *Gateway) MakeProxyHandler(config *types.ProxyConfig) gin.HandlerFunc
 			http.MethodGet,
 			http.MethodOptions,
 			http.MethodHead:
-			provider.ProxyRequest(ctx, defaultProxyClient, gate.provider)
+			provider.ProxyRequest(ctx, defaultProxyClient, gate.provider, cni)
 		default:
 			httputil.JSON(ctx, http.StatusMethodNotAllowed, httputil.Response{
 				Code:    httputil.ProxyNotAllowed,

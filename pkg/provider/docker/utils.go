@@ -10,7 +10,9 @@ import (
 	dtypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/types"
+	"github.com/rs/zerolog/log"
 )
 
 func (p *DockerProvider) convertEnvStringsToMap(envs []string) map[string]string {
@@ -33,11 +35,13 @@ func (p *DockerProvider) createFunction(info dtypes.ContainerJSON, fnName string
 	fn.EnvVars = p.convertEnvStringsToMap(info.Config.Env)
 	fn.Metadata = info.Config.Labels
 	fn.Namespace = info.NetworkSettings.SandboxKey
-
+	fn.Status = info.State.Status
 	return fn
 }
 
-func (p *DockerProvider) getFunction(ctx context.Context, fnName string) (*types.Function, error) {
+func (p *DockerProvider) getFunction(ctx context.Context, fnName string, cni *cninetwork.CNIManager) (*types.Function, error) {
+	// TODO: 目前寻找函数的方式过于粗暴，优化为O(1)如使用Label
+	log.Debug().Str("name", fnName).Send()
 	filter := filters.NewArgs(filters.Arg("name", fnName))
 	containers, err := p.cli.ContainerList(ctx, dtypes.ContainerListOptions{
 		Filters: filter,
@@ -48,11 +52,29 @@ func (p *DockerProvider) getFunction(ctx context.Context, fnName string) (*types
 	if len(containers) == 0 {
 		return nil, errors.New("get more than 1 function container")
 	}
-	info, err := p.Inspect(ctx, containers[0].ID)
+	var info dtypes.ContainerJSON
+	var found = false
+	for _, c := range containers {
+		info, err = p.Inspect(ctx, c.ID)
+		if err != nil {
+			log.Err(err).Send()
+			continue
+		}
+		if info.Name == "/"+fnName {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil, errors.New("function not found")
+	}
+	log.Debug().Str("containerID", containers[0].ID).Send()
+	function := p.createFunction(info, fnName)
+	ip, err := cni.GetIPAddress(function)
 	if err != nil {
 		return nil, err
 	}
-	function := p.createFunction(info, fnName)
+	function.IPAddress = ip
 	return function, nil
 }
 

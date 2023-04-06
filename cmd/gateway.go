@@ -21,12 +21,7 @@ const NameExpression = "-a-zA-Z_0-9."
 
 var (
 	config = types.GetConfig()
-	cni    *cninetwork.CNIManager
 )
-
-func init() {
-	cni = new(cninetwork.CNIManager)
-}
 
 // gatewayCmd represents the gateway command
 var gatewayCmd = &cobra.Command{
@@ -51,7 +46,7 @@ func runGateway(cmd *cobra.Command, args []string) error {
 	if err := gateway.Init(config); err != nil {
 		return err
 	}
-	if err := cni.InitNetwork(config.Network); err != nil {
+	if err := cninetwork.Init(config); err != nil {
 		return err
 	}
 	route := gin.New()
@@ -60,8 +55,8 @@ func runGateway(cmd *cobra.Command, args []string) error {
 
 	cqless := route.Group("/cqless")
 	{
-		cqless.POST("/function", gateway.MakeDeployHandler(cni, "", false))
-		cqless.DELETE("/function", gateway.MakeRemoveHandler(cni))
+		cqless.POST("/function", gateway.MakeDeployHandler("", false))
+		cqless.DELETE("/function", gateway.MakeRemoveHandler())
 	}
 
 	function := route.Group("/function")

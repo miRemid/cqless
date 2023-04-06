@@ -10,7 +10,7 @@ import (
 	"github.com/miRemid/cqless/pkg/utils"
 )
 
-func (gate *Gateway) Remove(cni *cninetwork.CNIManager) gin.HandlerFunc {
+func (gate *Gateway) MakeRemoveHandler(cni *cninetwork.CNIManager) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if ctx.Request.Body == nil {
 			return
@@ -39,22 +39,20 @@ func (gate *Gateway) Remove(cni *cninetwork.CNIManager) gin.HandlerFunc {
 			})
 			return
 		}
-		if fn, err := gate.provider.Remove(context.Background(), req); err != nil {
+		if fn, err := gate.provider.Remove(context.Background(), req, cni); err != nil {
 			httputil.BadRequest(ctx, httputil.Response{
 				Code:    httputil.StatusBadRequest,
 				Message: types.ErrNamespaceNotFound.Error(),
 			})
-			return
-		} else if err := cni.DeleteCNINetwork(context.Background(), fn); err != nil {
-			httputil.BadRequest(ctx, httputil.Response{
-				Code:    httputil.StatusBadRequest,
-				Message: types.ErrNamespaceNotFound.Error(),
+		} else {
+			httputil.OK(ctx, httputil.Response{
+				Code: httputil.StatusOK,
+				Data: fn,
 			})
-			return
 		}
 	}
 }
 
-func MakeRemoveHandler(cni *cninetwork.CNIManager) gin.HandlerFunc {
-	return defaultGateway.Remove(cni)
+func MakeRemoveHandler() gin.HandlerFunc {
+	return defaultGateway.MakeRemoveHandler(cninetwork.DefaultManager)
 }

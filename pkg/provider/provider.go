@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 
+	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/types"
 )
 
@@ -12,10 +13,10 @@ type ProviderPluginInterface interface {
 
 	ValidNamespace(string) (bool, error) // 检查Namespace
 
-	Deploy(ctx context.Context, req types.FunctionCreateRequest) (*types.Function, error)
-	Remove(ctx context.Context, req types.FunctionRemoveRequest) (*types.Function, error)
+	Deploy(ctx context.Context, req types.FunctionCreateRequest, cni *cninetwork.CNIManager) (*types.Function, error)
+	Remove(ctx context.Context, req types.FunctionRemoveRequest, cni *cninetwork.CNIManager) (*types.Function, error)
 
-	Resolve(ctx context.Context, functionName string) (url.URL, error)
+	Resolve(ctx context.Context, functionName string, cni *cninetwork.CNIManager) (url.URL, error)
 
 	Close()
 }
