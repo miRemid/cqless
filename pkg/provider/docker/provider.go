@@ -45,7 +45,7 @@ func (p *DockerProvider) ValidNamespace(namespace string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if v, found := labels[types.NAMESPACE_LABEL]; found && v == "true" {
+	if v, found := labels[types.DEFAULT_FUNCTION_NAMESPACE]; found && v == "true" {
 		return true, nil
 	}
 	return false, nil

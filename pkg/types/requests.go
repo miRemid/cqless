@@ -96,12 +96,12 @@ func (request FunctionCreateRequest) BuildEnv() []string {
 
 // FunctionResources Memory and CPU
 type FunctionResources struct {
-	Memory string `json:"memory,omitempty"`
-	CPU    string `json:"cpu,omitempty"`
+	Memory string `form:"memory" json:"memory,omitempty"`
+	CPU    string `form:"cpu" json:"cpu,omitempty"`
 }
 
 type FunctionRequest struct {
-	FunctionName string `json:"function_name"`
+	FunctionName string `form:"fn" json:"fn"`
 }
 
 type FunctionRemoveRequest struct {

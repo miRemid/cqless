@@ -38,12 +38,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
-	rootCmd.PersistentFlags().IntVar(&httpClientReadTimeout, "--read-timeout", 30, "http request read timeout")
-	rootCmd.PersistentFlags().IntVar(&httpClientWriteTimeout, "--write-timeout", 30, "http request write timeout")
-	rootCmd.PersistentFlags().StringVarP(&httpClientGatewayAddress, "--address", "a", "127.0.0.1", "gateway address")
-	rootCmd.PersistentFlags().StringVarP(&httpClientGatewayConfigPath, "--config", "c", types.DEFAULT_CONFIG_PATH, "config path")
-	rootCmd.PersistentFlags().StringVar(&functionNamespace, "--namespace", types.DEFAULT_FUNCTION_NAMESPACE, "function namespace")
+
 }
 
 func Execute() {

@@ -25,15 +25,6 @@ func init() {
 	}
 }
 
-func Test_Inspect(t *testing.T) {
-
-	id := "90359a8e77a9bf829628274c96e81f24be31548f08ea74ba27f0120e8d221360"
-
-	data, err := p.Inspect(context.Background(), id)
-	assert.NilError(t, err)
-	t.Log(data.ID)
-}
-
 func Test_PullImage(t *testing.T) {
 	t.Log("Connect to docker, prepare to pull the nginx:alpine")
 	err := p.pull(context.Background(), types.FunctionCreateRequest{
@@ -47,8 +38,8 @@ func Test_PullImage(t *testing.T) {
 func Test_DeployImage(t *testing.T) {
 	t.Log("Connect to docker, prepare to pull the nginx:alpine\n")
 	fn, err := p.Deploy(context.TODO(), types.FunctionCreateRequest{
-		Image: "nginx:alpine",
-		Name:  "nginx",
+		Image: "kamir3mid/test",
+		Name:  "test",
 	}, cninetwork.DefaultManager)
 	if err != nil {
 		t.Fatal(err)
@@ -65,8 +56,17 @@ func Test_RemoveImage(t *testing.T) {
 	assert.NilError(t, err)
 }
 
-func Test_Resolve(t *testing.T) {
-
+func Test_Inspect(t *testing.T) {
+	fn, err := p.Inspect(context.Background(), types.FunctionGetRequest{
+		FunctionRequest: types.FunctionRequest{
+			FunctionName: "nginx",
+		},
+	}, cninetwork.DefaultManager)
+	assert.NilError(t, err)
+	t.Log(fn)
+	fns, err := p.Inspect(context.Background(), types.FunctionGetRequest{}, cninetwork.DefaultManager)
+	assert.NilError(t, err)
+	t.Log(fns)
 }
 
 func Test_Deploy_Inspect_Remove(t *testing.T) {

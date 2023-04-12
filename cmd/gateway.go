@@ -56,6 +56,7 @@ func runGateway(cmd *cobra.Command, args []string) error {
 	{
 		cqless.POST("/function", gateway.MakeDeployHandler("", false))
 		cqless.DELETE("/function", gateway.MakeRemoveHandler())
+		cqless.GET("/function", gateway.MakeInspectHandler())
 	}
 
 	function := route.Group("/function")

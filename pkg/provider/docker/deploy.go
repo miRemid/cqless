@@ -2,6 +2,9 @@ package docker
 
 import (
 	"context"
+	"crypto/sha256"
+	"fmt"
+	"time"
 
 	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/types"
@@ -88,6 +91,13 @@ func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateReq
 	if err != nil {
 		return nil, err
 	}
+	labels[types.DEFAULT_FUNCTION_NAME_LABEL] = req.Name // 添加一个 DEFAULT_FUNCTION_NAME_LABEL = FunctionName 用于后续查找
+
+	// 计算一个Hash Label，用于区分
+	hashKey := fmt.Sprintf("%s%v", req.Name, time.Now())
+	hashValue := sha256.Sum256([]byte(hashKey))
+	containerName := fmt.Sprintf("%s-%x", req.Name, hashValue[:4])
+
 	envs := req.BuildEnv()
 	mounts := p.getOSMounts()
 
@@ -113,7 +123,7 @@ func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateReq
 			Resources:   containerResources,
 			NetworkMode: "none", // 我们将使用cni来为container提供网络
 		},
-		nil, nil, req.Name)
+		nil, nil, containerName)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +136,7 @@ func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateReq
 	if err != nil {
 		return nil, err
 	}
-	fn := p.createFunction(info, req.Name)
+	fn := p.createFunction(info)
 	_, err = cni.CreateCNINetwork(ctx, fn)
 	if err != nil {
 		return nil, err

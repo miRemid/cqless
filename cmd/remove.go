@@ -22,9 +22,9 @@ var rmCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(rmCmd)
+	functionCmd.AddCommand(rmCmd)
 
-	rmCmd.Flags().StringVarP(&functionName, "function-name", "n", "", "function name")
+	rmCmd.Flags().StringVarP(&functionName, "function-name", "f", "", "function name")
 }
 
 func remove(cmd *cobra.Command, args []string) {
@@ -41,7 +41,10 @@ func remove(cmd *cobra.Command, args []string) {
 		fmt.Println(err)
 		return
 	}
-	req.URL.Query().Add("namespace", functionNamespace)
+	query := req.URL.Query()
+	query.Add("namespace", functionNamespace)
+	req.URL.RawQuery = query.Encode()
+
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		fmt.Println(err)

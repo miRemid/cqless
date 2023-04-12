@@ -2,11 +2,12 @@ package docker
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path"
 	"strings"
+	"sync"
 
+	dtype "github.com/docker/docker/api/types"
 	dtypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
@@ -26,12 +27,13 @@ func (p *DockerProvider) convertEnvStringsToMap(envs []string) map[string]string
 
 }
 
-func (p *DockerProvider) createFunction(info dtypes.ContainerJSON, fnName string) *types.Function {
+func (p *DockerProvider) createFunction(info dtypes.ContainerJSON) *types.Function {
 	var fn = new(types.Function)
 
 	fn.ID = info.ID
 	fn.PID = uint32(info.State.Pid)
-	fn.Name = fnName
+	fn.Name = info.Config.Labels[types.DEFAULT_FUNCTION_NAME_LABEL]
+	fn.FullName = info.Name
 	fn.EnvVars = p.convertEnvStringsToMap(info.Config.Env)
 	fn.Metadata = info.Config.Labels
 	fn.Namespace = info.NetworkSettings.SandboxKey
@@ -39,40 +41,59 @@ func (p *DockerProvider) createFunction(info dtypes.ContainerJSON, fnName string
 	return fn
 }
 
-func (p *DockerProvider) getFunction(ctx context.Context, fnName string, cni *cninetwork.CNIManager) (*types.Function, error) {
-	// TODO: 目前寻找函数的方式过于粗暴，优化为O(1)如使用Label
-	log.Debug().Str("getFunction.fnName", fnName).Send()
-	filter := filters.NewArgs(filters.Arg("name", fnName))
+func (p *DockerProvider) getAllFunctionContainers(ctx context.Context, fs ...filters.KeyValuePair) ([]dtype.Container, error) {
+	filter := filters.NewArgs(fs...)
+	filter.Add("label", types.DEFAULT_FUNCTION_NAME_LABEL)
 	containers, err := p.cli.ContainerList(ctx, dtypes.ContainerListOptions{
 		Filters: filter,
 	})
+	return containers, err
+}
+
+func (p *DockerProvider) getAllFunctions(ctx context.Context, cni *cninetwork.CNIManager, fs ...filters.KeyValuePair) ([]*types.Function, error) {
+	containers, err := p.getAllFunctionContainers(ctx, fs...)
 	if err != nil {
 		return nil, err
 	}
-	if len(containers) > 1 {
-		return nil, errors.New("get more than 1 function container")
+	var functionChan = make(chan *types.Function, len(containers))
+	wg := sync.WaitGroup{}
+	for _, info := range containers {
+		wg.Add(1)
+		go func(c dtype.Container) {
+			defer wg.Done()
+			function, err := p.getFunctionByContainer(ctx, c, cni)
+			if err != nil {
+				return
+			}
+			functionChan <- function
+		}(info)
 	}
-	if len(containers) == 0 {
-		return nil, errors.New("function not found, containers = 0")
+	wg.Wait()
+	close(functionChan)
+	var res = make([]*types.Function, 0)
+	for len(functionChan) != 0 {
+		fn := <-functionChan
+		res = append(res, fn)
 	}
-	var info dtypes.ContainerJSON
-	var found = false
-	for _, c := range containers {
-		info, err = p.Inspect(ctx, c.ID)
-		if err != nil {
-			log.Err(err).Send()
-			continue
-		}
-		if info.Name == "/"+fnName {
-			found = true
-			break
-		}
+	return res, nil
+}
+
+func (p *DockerProvider) getAllFunctionsByName(ctx context.Context, fnName string, cni *cninetwork.CNIManager) ([]*types.Function, error) {
+	functions, err := p.getAllFunctions(ctx, cni, filters.Arg("name", fnName))
+	if err != nil {
+		return nil, err
 	}
-	if !found {
-		return nil, errors.New("function not found")
+	return functions, nil
+}
+
+func (p *DockerProvider) getFunctionByContainer(ctx context.Context, c dtypes.Container, cni *cninetwork.CNIManager) (*types.Function, error) {
+	log.Debug().Str("getFunctionByContainer.containerID", c.ID).Send()
+	info, err := p.cli.ContainerInspect(ctx, c.ID)
+	if err != nil {
+		log.Err(err).Send()
+		return nil, err
 	}
-	log.Debug().Str("containerID", containers[0].ID).Send()
-	function := p.createFunction(info, fnName)
+	function := p.createFunction(info)
 	ip, err := cni.GetIPAddress(function)
 	if err != nil {
 		return nil, err

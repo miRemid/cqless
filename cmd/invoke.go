@@ -22,9 +22,9 @@ var invokeCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(invokeCmd)
+	functionCmd.AddCommand(invokeCmd)
 
-	invokeCmd.Flags().StringVarP(&functionName, "function-name", "n", "", "function name")
+	invokeCmd.Flags().StringVarP(&functionName, "function-name", "f", "", "function name")
 }
 
 func invoke(cmd *cobra.Command, args []string) {
