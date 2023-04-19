@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	dtype "github.com/docker/docker/api/types"
 	dtypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
@@ -41,7 +40,7 @@ func (p *DockerProvider) createFunction(info dtypes.ContainerJSON) *types.Functi
 	return fn
 }
 
-func (p *DockerProvider) getAllFunctionContainers(ctx context.Context, fs ...filters.KeyValuePair) ([]dtype.Container, error) {
+func (p *DockerProvider) getAllFunctionContainers(ctx context.Context, fs ...filters.KeyValuePair) ([]dtypes.Container, error) {
 	filter := filters.NewArgs(fs...)
 	filter.Add("label", types.DEFAULT_FUNCTION_NAME_LABEL)
 	containers, err := p.cli.ContainerList(ctx, dtypes.ContainerListOptions{
@@ -59,7 +58,7 @@ func (p *DockerProvider) getAllFunctions(ctx context.Context, cni *cninetwork.CN
 	wg := sync.WaitGroup{}
 	for _, info := range containers {
 		wg.Add(1)
-		go func(c dtype.Container) {
+		go func(c dtypes.Container) {
 			defer wg.Done()
 			function, err := p.getFunctionByContainer(ctx, c, cni)
 			if err != nil {
