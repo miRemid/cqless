@@ -4,13 +4,10 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/miRemid/cqless/pkg/types"
 	"github.com/spf13/cobra"
 )
 
@@ -28,15 +25,8 @@ func init() {
 }
 
 func invoke(cmd *cobra.Command, args []string) {
-	var buffer bytes.Buffer
-	var reqBody types.FunctionInvokeRequest
-	reqBody.FunctionName = functionName
-	if err := json.NewEncoder(&buffer).Encode(reqBody); err != nil {
-		fmt.Println(err)
-		return
-	}
 	requestURI := fmt.Sprintf(cqless_invoke_api, httpClientGatewayAddress, config.Gateway.Port, functionName)
-	req, err := http.NewRequest(http.MethodPost, requestURI, &buffer)
+	req, err := http.NewRequest(http.MethodPost, requestURI, nil)
 	if err != nil {
 		fmt.Println(err)
 		return

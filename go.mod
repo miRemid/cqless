@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/Mrs4s/MiraiGo v0.0.0-20230319092203-62d60f132203
+	github.com/buger/jsonparser v1.1.1
 	github.com/containerd/go-cni v1.1.9
 	github.com/docker/docker v23.0.1+incompatible
 	github.com/gin-gonic/gin v1.9.0

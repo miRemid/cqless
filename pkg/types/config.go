@@ -77,6 +77,7 @@ type CQLessConfig struct {
 	Logger  *LoggerConfig  `yaml:"logger" mapstructure:"logger"`
 	Proxy   *ProxyConfig   `yaml:"proxy" mapstructure:"proxy"`
 	Gateway *GatewayConfig `yaml:"gateway" mapstructure:"gateway"`
+	CQHTTP  *CQHTTPConfig  `yaml:"cqhttp" mapstructure:"cqhttp"`
 }
 
 type NetworkConfig struct {
@@ -119,4 +120,8 @@ type GatewayConfig struct {
 	Port         int           `yaml:"port" mapstructure:"port"`
 	ReadTimeout  time.Duration `yaml:"read_timeout" mapstructure:"read_timeout"`
 	WriteTimeout time.Duration `yaml:"write_timeout" mapstructure:"write_timeout"`
+}
+
+type CQHTTPConfig struct {
+	AuthToken string `yaml:"auth_token" mapstructure:"auth_token"`
 }

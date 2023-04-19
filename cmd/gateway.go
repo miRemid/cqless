@@ -62,16 +62,13 @@ func runGateway(cmd *cobra.Command, args []string) error {
 	function := route.Group("/function")
 	{
 		function.POST("/:name", proxyHandler)
-		// function.POST("/function/:name/", proxyHandler)
 		function.POST("/:name/:params", proxyHandler)
 	}
-
-	// route.HandleFunc("/cqless/function", gateway.MakeDeployHandler(cni, "", false)).Methods(http.MethodPut)
 
 	// CQHTTP Websocket
 	cq := route.Group("/cqhttp")
 	{
-		cq.Match([]string{http.MethodGet, http.MethodPost}, "", cqhttp.WebsocketHandler)
+		cq.Match([]string{http.MethodGet, http.MethodPost}, "", cqhttp.GetDefaultCQHTTPManager().WebsocketHandler)
 	}
 
 	server := &http.Server{

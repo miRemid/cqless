@@ -3,6 +3,7 @@ package cqhttp
 import (
 	"net/http"
 
+	"github.com/buger/jsonparser"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
@@ -16,19 +17,61 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func WebsocketHandler(ctx *gin.Context) {
-	c, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
+func (c *CQHTTPManager) WebsocketHandler(ctx *gin.Context) {
+	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
 		log.Error().Err(err).Send()
 		return
 	}
-	defer c.Close()
-	for {
-		_, message, err := c.ReadMessage()
-		if err != nil {
-			log.Error().Err(err).Send()
-			break
-		}
-		log.Info().Msg(string(message))
+	_, message, err := conn.ReadMessage()
+	if err != nil {
+		log.Error().Err(err).Send()
+		return
 	}
+	// id := jsonparser.Get(message, "")
+	post_type, err := jsonparser.GetString(message, "post_type")
+	if err != nil {
+		log.Error().Err(err).Send()
+		conn.Close()
+		return
+	}
+	if post_type != "meta_event" {
+		log.Error().Msg("wrong post_type, websocket connect's post_type must be 'meta_event'")
+		conn.Close()
+		return
+	}
+	metaEventType, err := jsonparser.GetString(message, "meta_event_type")
+	if err != nil {
+		log.Error().Err(err).Send()
+		conn.Close()
+		return
+	}
+	if metaEventType != "lifecycle" {
+		log.Error().Msg("wrong meta_event_type, websocket connect's meta_event_type must be 'lifecycle'")
+		conn.Close()
+		return
+	}
+	id, err := jsonparser.GetInt(message, "self_id")
+	if err != nil {
+		log.Error().Err(err).Send()
+		conn.Close()
+		return
+	}
+	wb := &CQHTTPWebsocket{
+		id:   uint(id),
+		conn: conn,
+	}
+	c.websockets_.Store(uint(id), wb)
+	go func(cb *CQHTTPWebsocket) {
+		defer cb.Close()
+		defer func() {
+			if err := recover(); err != nil {
+				log.Error().Any("panic", err).Send()
+			}
+		}()
+		if err := cb.Listen(c.messageChan); err != nil {
+			panic(err)
+		}
+	}(wb)
+	log.Info().Msgf("establish websocket connection!")
 }

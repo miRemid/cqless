@@ -1,12 +1,15 @@
 package provider
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -103,7 +106,6 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 	start := time.Now()
 	response, err := proxyClient.Do(proxyReq.WithContext(ctx))
 	seconds := time.Since(start)
-
 	if err != nil {
 		log.Err(err).Send()
 		httputil.BadRequest(ctx, httputil.Response{
@@ -113,19 +115,39 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 		return
 	}
 	defer response.Body.Close()
-
 	log.Printf("%s took %f seconds\n", functionName, seconds.Seconds())
+	data, _ := io.ReadAll(response.Body)
 
 	clientHeader := ctx.Writer.Header()
 	copyHeaders(clientHeader, &response.Header)
-	ctx.Writer.Header().Set("Content-Type", getContentType(ctx.Request.Header, response.Header))
-
 	ctx.Writer.WriteHeader(response.StatusCode)
-	if response.Body != nil {
-		if _, err := io.Copy(ctx.Writer, response.Body); err != nil {
-			log.Error().Msg(fmt.Sprintf("write proxy failed: %v", err))
-		}
+
+	reply := httputil.Response{
+		Code:    httputil.StatusOK,
+		Message: "",
 	}
+	responseContentType := response.Header.Get("Content-Type")
+	if strings.Contains(responseContentType, "json") {
+		var tmpData = make(map[string]interface{})
+		json.NewDecoder(bytes.NewBuffer(data)).Decode(&tmpData)
+		reply.Data = tmpData
+	} else if strings.Contains(responseContentType, "text") {
+		reply.Data = string(data)
+	} else {
+		reply.Data = data
+	}
+
+	var buffer bytes.Buffer
+	if err := json.NewEncoder(&buffer).Encode(reply); err != nil {
+		log.Err(err).Send()
+		httputil.BadRequest(ctx, httputil.Response{
+			Code:    httputil.ProxyInternalServerError,
+			Message: fmt.Sprintf("Can't reach service for: %s.", functionName),
+		})
+		return
+	}
+	ctx.Writer.Header().Set("Content-Length", fmt.Sprintf("%d", len(buffer.Bytes())))
+	ctx.Writer.Write(buffer.Bytes())
 }
 
 // buildProxyRequest creates a request object for the proxy request, it will ensure that

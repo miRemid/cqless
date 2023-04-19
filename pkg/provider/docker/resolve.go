@@ -14,6 +14,9 @@ func (p *DockerProvider) Resolve(ctx context.Context, functionName string, cni *
 	if err != nil {
 		return url.URL{}, err
 	}
+	if len(fns) == 0 {
+		return url.URL{}, fmt.Errorf("未发现和 '%s' 函数相关容器", functionName)
+	}
 	fn := fns[0]
 	urlStr := fmt.Sprintf("http://%s:%s", fn.IPAddress, provider.WatchdogPort)
 	urlRes, err := url.Parse(urlStr)
