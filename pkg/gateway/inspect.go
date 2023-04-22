@@ -16,7 +16,7 @@ func (gate *Gateway) MakeInspectHandler(cni *cninetwork.CNIManager) gin.HandlerF
 		}
 		defer ctx.Request.Body.Close()
 		// check params
-		var req types.FunctionGetRequest
+		var req types.FunctionInspectRequest
 		if err := ctx.Bind(&req); err != nil {
 			log.Err(err).Send()
 			httputil.BadRequest(ctx, httputil.Response{

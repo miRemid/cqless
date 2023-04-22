@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"sync"
 
 	dtypes "github.com/docker/docker/api/types"
 	"github.com/miRemid/cqless/pkg/cninetwork"
@@ -9,20 +10,43 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (p *DockerProvider) Remove(ctx context.Context, req types.FunctionRemoveRequest, cni *cninetwork.CNIManager) (*types.Function, error) {
+func (p *DockerProvider) Remove(ctx context.Context, req types.FunctionRemoveRequest, cni *cninetwork.CNIManager) error {
 	fns, err := p.getAllFunctionsByName(ctx, req.FunctionName, cni)
 	if err != nil {
-		return nil, errors.WithMessage(err, "get function container error")
+		return errors.WithMessage(err, "获取容器列表失败")
 	}
-	// TODO: 目前只能删除第一个容器，暂不支持全部删除
-	fn := fns[0]
-	if err := cni.DeleteCNINetwork(ctx, fn); err != nil {
-		return nil, errors.WithMessage(err, "delete cni network error")
+	if len(fns) == 0 {
+		return errors.Errorf("未找到相关容器")
 	}
-	if err = p.cli.ContainerRemove(ctx, fn.ID, dtypes.ContainerRemoveOptions{
-		Force: true,
-	}); err != nil {
-		return nil, errors.WithMessage(err, "delete container error")
+	if !req.All {
+		if req.Number < 1 {
+			return errors.WithMessage(err, "删除容器数量必须大于1")
+		} else if req.Number < len(fns) {
+			fns = fns[:req.Number]
+		}
+
 	}
-	return fn, nil
+	wg := sync.WaitGroup{}
+	errChannel := make(chan error, len(fns))
+	for _, fn := range fns {
+		wg.Add(1)
+		go func(fn *types.Function) {
+			defer wg.Done()
+			if err := cni.DeleteCNINetwork(ctx, fn); err != nil {
+				errChannel <- errors.WithMessagef(err, "删除CNI网络失败: ID=%s", fn.ID)
+			}
+			if err := p.cli.ContainerRemove(ctx, fn.ID, dtypes.ContainerRemoveOptions{
+				Force: true,
+			}); err != nil {
+				errChannel <- errors.WithMessagef(err, "删除容器失败: ID=%s", fn.ID)
+			}
+		}(fn)
+	}
+	wg.Wait()
+	close(errChannel)
+	err = nil
+	for e := range errChannel {
+		err = errors.Wrap(err, e.Error())
+	}
+	return err
 }

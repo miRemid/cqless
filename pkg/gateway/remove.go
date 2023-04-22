@@ -25,7 +25,7 @@ func (gate *Gateway) MakeRemoveHandler(cni *cninetwork.CNIManager) gin.HandlerFu
 			log.Err(err).Send()
 			httputil.BadRequest(ctx, httputil.Response{
 				Code:    httputil.StatusBadRequest,
-				Message: errors.Wrap(err, "remove failed, please check gateway log").Error(),
+				Message: errors.WithMessage(err, "删除函数失败").Error(),
 			})
 			return
 		}
@@ -34,7 +34,7 @@ func (gate *Gateway) MakeRemoveHandler(cni *cninetwork.CNIManager) gin.HandlerFu
 			log.Err(err).Send()
 			httputil.BadRequest(ctx, httputil.Response{
 				Code:    httputil.StatusBadRequest,
-				Message: errors.Wrap(err, "remove failed, please check gateway log").Error(),
+				Message: errors.WithMessage(err, "删除函数失败").Error(),
 			})
 			return
 		} else if !valid {
@@ -42,21 +42,20 @@ func (gate *Gateway) MakeRemoveHandler(cni *cninetwork.CNIManager) gin.HandlerFu
 			log.Err(err).Send()
 			httputil.BadRequest(ctx, httputil.Response{
 				Code:    httputil.StatusBadRequest,
-				Message: errors.Wrap(err, "remove failed, please check gateway log").Error(),
+				Message: errors.WithMessage(err, "删除函数失败").Error(),
 			})
 			return
 		}
-		if fn, err := gate.provider.Remove(context.Background(), req, cni); err != nil {
+		if err := gate.provider.Remove(context.Background(), req, cni); err != nil {
 			log.Err(err).Send()
 			httputil.BadRequest(ctx, httputil.Response{
 				Code:    httputil.StatusBadRequest,
-				Message: errors.Wrap(errors.Errorf("`%s` not found", req.FunctionName), "remove failed, please check gateway log").Error(),
+				Message: errors.Wrap(errors.Errorf("未找到 `%s` 相关函数", req.FunctionName), "删除函数失败").Error(),
 			})
 		} else {
 			httputil.OK(ctx, httputil.Response{
 				Code:    httputil.StatusOK,
-				Data:    fn,
-				Message: fmt.Sprintf("remove success, `%s` has been removed", req.FunctionName),
+				Message: fmt.Sprintf("函数 `%s` 已被成功删除", req.FunctionName),
 			})
 		}
 	}

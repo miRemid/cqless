@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"math"
 	"net/http"
 
 	"github.com/miRemid/cqless/pkg/httputil"
@@ -17,34 +16,30 @@ import (
 	"github.com/spf13/viper"
 )
 
-// rmCmd represents the rm command
-var rmCmd = &cobra.Command{
-	Use:   "remove",
-	Short: "删除函数",
-	Run:   remove,
+// deployCmd represents the deploy command
+var deployCmd = &cobra.Command{
+	Use:   "deploy",
+	Short: "",
+	Long:  ``,
+	Run:   deploy,
 }
 
 var (
-	removeAllFunction    bool = true
-	removeFunctionNumber int  = math.MaxInt
+	deployFunctionName  string
+	deployFunctionImage string
 )
 
 func init() {
-	functionCmd.AddCommand(rmCmd)
-
-	rmCmd.Flags().StringVarP(&functionName, "function-name", "f", "", "需要删除的函数名称")
-	rmCmd.Flags().BoolVarP(&removeAllFunction, "all", "a", true, "删除所有函数容器")
-	rmCmd.Flags().IntVar(&removeFunctionNumber, "number", math.MaxInt, "删除指定数量容器")
+	functionCmd.AddCommand(deployCmd)
+	deployCmd.Flags().StringVarP(&deployFunctionName, "name", "n", "", "函数名称")
+	deployCmd.Flags().StringVarP(&deployFunctionImage, "image", "i", "", "容器镜像名称")
 }
 
-func remove(cmd *cobra.Command, args []string) {
-
-	var reqBody types.FunctionRemoveRequest
-	// 优先处理配置文件
+func deploy(cmd *cobra.Command, args []string) {
+	// 1. read yaml file
+	var reqBody types.FunctionCreateRequest
 	if functionConfigPath != "" {
-		// 1. read yaml file
 		functionConfigReader.SetConfigFile(functionConfigPath)
-		// functionConfigReader.AddConfigPath(functionConfigPath)
 		if err := functionConfigReader.ReadInConfig(); err != nil {
 			fmt.Printf("读取部署文件配置失败: %v\n", err)
 			return
@@ -55,34 +50,25 @@ func remove(cmd *cobra.Command, args []string) {
 			fmt.Printf("读取部署文件配置失败: %v\n", err)
 			return
 		}
-	} else if functionName == "" {
-		fmt.Println("未找到函数名称")
-		return
 	} else {
-		reqBody.FunctionName = functionName
+		if deployFunctionImage == "" || deployFunctionName == "" {
+			fmt.Println("请求参数错误，确实函数名称或容器镜像名称")
+			return
+		}
+		reqBody.Image = deployFunctionImage
+		reqBody.Name = deployFunctionName
 	}
-	if removeFunctionNumber <= 0 {
-		fmt.Println("不合法的参数，删除的数量必须大于等于1")
-		return
-	} else {
-		reqBody.Number = removeFunctionNumber
-	}
-
 	var buffer bytes.Buffer
 	if err := json.NewEncoder(&buffer).Encode(reqBody); err != nil {
-		fmt.Println(err)
+		fmt.Printf("序列化请求失败: %v\n", err)
 		return
 	}
 	requestURI := fmt.Sprintf(cqless_function_api, httpClientGatewayAddress, config.Gateway.Port)
-	req, err := http.NewRequest(http.MethodDelete, requestURI, &buffer)
+	req, err := http.NewRequest(http.MethodPost, requestURI, &buffer)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	query := req.URL.Query()
-	query.Add("namespace", functionNamespace)
-	req.URL.RawQuery = query.Encode()
-
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		fmt.Println(err)
@@ -95,6 +81,6 @@ func remove(cmd *cobra.Command, args []string) {
 		return
 	}
 	if response.Code != httputil.StatusOK {
-		fmt.Println(response.Message)
+		fmt.Println("创建函数失败: ", response.Message)
 	}
 }

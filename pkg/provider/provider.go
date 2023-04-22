@@ -14,8 +14,8 @@ type ProviderPluginInterface interface {
 	ValidNamespace(string) (bool, error) // 检查Namespace
 
 	Deploy(ctx context.Context, req types.FunctionCreateRequest, cni *cninetwork.CNIManager) (*types.Function, error)
-	Remove(ctx context.Context, req types.FunctionRemoveRequest, cni *cninetwork.CNIManager) (*types.Function, error)
-	Inspect(ctx context.Context, req types.FunctionGetRequest, cni *cninetwork.CNIManager) ([]*types.Function, error)
+	Remove(ctx context.Context, req types.FunctionRemoveRequest, cni *cninetwork.CNIManager) error
+	Inspect(ctx context.Context, req types.FunctionInspectRequest, cni *cninetwork.CNIManager) ([]*types.Function, error)
 
 	Resolve(ctx context.Context, functionName string, cni *cninetwork.CNIManager) (url.URL, error)
 

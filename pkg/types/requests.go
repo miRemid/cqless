@@ -101,14 +101,16 @@ type FunctionResources struct {
 }
 
 type FunctionRequest struct {
-	FunctionName string `form:"fn" json:"fn"`
+	FunctionName string `form:"name" json:"name"`
 }
 
 type FunctionRemoveRequest struct {
 	FunctionRequest
+	All    bool `form:"all" json:"all"`
+	Number int  `form:"number" json:"number"`
 }
 
-type FunctionGetRequest struct {
+type FunctionInspectRequest struct {
 	FunctionRequest
 }
 

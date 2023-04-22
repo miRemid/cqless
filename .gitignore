@@ -22,7 +22,6 @@ cqless
 go.work
 
 # wait for finish the module
-cmd/deploy.go
 
 # test directory
 tempdata
