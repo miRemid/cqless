@@ -22,6 +22,9 @@ cqless
 go.work
 
 # wait for finish the module
+builder
+docker
+scripts
 
 # test directory
 tempdata
