@@ -194,19 +194,3 @@ func copyHeaders(destination http.Header, source *http.Header) {
 		destination[k] = vClone
 	}
 }
-
-// getContentType resolves the correct Content-Type for a proxied function.
-func getContentType(request http.Header, proxyResponse http.Header) (headerContentType string) {
-	responseHeader := proxyResponse.Get("Content-Type")
-	requestHeader := request.Get("Content-Type")
-
-	if len(responseHeader) > 0 {
-		headerContentType = responseHeader
-	} else if len(requestHeader) > 0 {
-		headerContentType = requestHeader
-	} else {
-		headerContentType = defaultContentType
-	}
-
-	return headerContentType
-}
