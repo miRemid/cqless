@@ -65,7 +65,7 @@ func deploy(cmd *cobra.Command, args []string) {
 		return
 	}
 	requestURI := fmt.Sprintf(cqless_function_api, httpClientGatewayAddress, httpClientGatewayPort)
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout))
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout)*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURI, &buffer)
 	if err != nil {
