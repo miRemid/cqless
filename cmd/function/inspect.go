@@ -47,9 +47,9 @@ func inspect(cmd *cobra.Command, args []string) {
 		reqBody.FunctionName = functionName
 	}
 	var requestURI = fmt.Sprintf(cqless_function_api, httpClientGatewayAddress, httpClientGatewayPort)
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout))
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout)*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURI, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURI, nil)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -70,12 +70,13 @@ func inspect(cmd *cobra.Command, args []string) {
 		fmt.Println(err)
 		return
 	}
-	fns := response.Data.([]interface{})
-	tb := table.NewWriter()
-	tb.AppendHeader(table.Row{"Name", "Full Name", "ID", "IP Address", "Status"})
-	for _, f := range fns {
-		fn := f.(map[string]interface{})
-		tb.AppendRow(table.Row{fn["name"], fn["full_name"], fn["id"], fn["ip"], fn["status"]})
+	if fns, ok := response.Data.([]interface{}); ok {
+		tb := table.NewWriter()
+		tb.AppendHeader(table.Row{"Name", "Full Name", "ID", "IP Address", "Status"})
+		for _, f := range fns {
+			fn := f.(map[string]interface{})
+			tb.AppendRow(table.Row{fn["name"], fn["full_name"], fn["id"], fn["ip"], fn["status"]})
+		}
+		fmt.Println(tb.Render())
 	}
-	fmt.Println(tb.Render())
 }

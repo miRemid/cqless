@@ -50,7 +50,7 @@ func invoke(cmd *cobra.Command, args []string) {
 		reqBody.FunctionName = functionName
 	}
 	requestURI := fmt.Sprintf(cqless_invoke_api, httpClientGatewayAddress, httpClientGatewayPort, reqBody.FunctionName)
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout))
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout)*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURI, nil)
 	if err != nil {
