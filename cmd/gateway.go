@@ -24,9 +24,7 @@ var (
 	config     = types.GetConfig()
 	gatewayCmd = &cobra.Command{
 		Use:   "gateway",
-		Short: "setup CQLESS gateway for CQLESS provider",
-		Long: `gateway is the entry for the CQLESS function container, gateway will proxy 
-	the cli invoke or message event from go-cqhttp to the deployed function`,
+		Short: "启动一个网关程序吧！",
 	}
 )
 
