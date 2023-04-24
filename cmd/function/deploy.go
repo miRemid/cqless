@@ -28,11 +28,13 @@ var deployCmd = &cobra.Command{
 var (
 	deployFunctionName  string
 	deployFunctionImage string
+	deployFunctionPort  string
 )
 
 func init() {
 	deployCmd.Flags().StringVarP(&deployFunctionName, "name", "n", "", "函数名称")
 	deployCmd.Flags().StringVarP(&deployFunctionImage, "image", "i", "", "容器镜像名称")
+	deployCmd.Flags().StringVarP(&deployFunctionPort, "port", "p", "8080", "函数服务监听端口")
 }
 
 func deploy(cmd *cobra.Command, args []string) {
@@ -58,6 +60,7 @@ func deploy(cmd *cobra.Command, args []string) {
 		}
 		reqBody.Image = deployFunctionImage
 		reqBody.Name = deployFunctionName
+		reqBody.WatchDogPort = deployFunctionPort
 	}
 	var buffer bytes.Buffer
 	if err := json.NewEncoder(&buffer).Encode(reqBody); err != nil {

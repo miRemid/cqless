@@ -32,6 +32,7 @@ func (p *DockerProvider) createFunction(info dtypes.ContainerJSON) *types.Functi
 	fn.ID = info.ID
 	fn.PID = uint32(info.State.Pid)
 	fn.Name = info.Config.Labels[types.DEFAULT_FUNCTION_NAME_LABEL]
+	fn.WatchdogPort = info.Config.Labels[types.DEFAULT_FUNCTION_PORT_LABEL]
 	fn.FullName = info.Name
 	fn.EnvVars = p.convertEnvStringsToMap(info.Config.Env)
 	fn.Metadata = info.Config.Labels

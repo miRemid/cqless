@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/miRemid/cqless/pkg/cninetwork"
+	"github.com/miRemid/cqless/pkg/provider"
 	"github.com/miRemid/cqless/pkg/types"
 	"github.com/rs/zerolog/log"
 
@@ -92,6 +93,10 @@ func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateReq
 		return nil, err
 	}
 	labels[types.DEFAULT_FUNCTION_NAME_LABEL] = req.Name // 添加一个 DEFAULT_FUNCTION_NAME_LABEL = FunctionName 用于后续查找
+	if req.WatchDogPort == "" {
+		req.WatchDogPort = provider.WatchdogPort
+	}
+	labels[types.DEFAULT_FUNCTION_PORT_LABEL] = req.WatchDogPort // 添加一个WatchPort标签，用于Resolve
 
 	// 计算一个Hash Label，用于区分
 	hashKey := fmt.Sprintf("%s%v", req.Name, time.Now())

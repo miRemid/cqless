@@ -3,10 +3,11 @@ package docker
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net/url"
+	"time"
 
 	"github.com/miRemid/cqless/pkg/cninetwork"
-	"github.com/miRemid/cqless/pkg/provider"
 )
 
 func (p *DockerProvider) Resolve(ctx context.Context, functionName string, cni *cninetwork.CNIManager) (url.URL, error) {
@@ -17,8 +18,11 @@ func (p *DockerProvider) Resolve(ctx context.Context, functionName string, cni *
 	if len(fns) == 0 {
 		return url.URL{}, fmt.Errorf("未发现和 '%s' 函数相关容器", functionName)
 	}
-	fn := fns[0]
-	urlStr := fmt.Sprintf("http://%s:%s", fn.IPAddress, provider.WatchdogPort)
+	// TODO: 负载均衡，目前随机选取
+	newRand := rand.New(rand.NewSource(time.Now().Unix()))
+	idx := newRand.Intn(len(fns))
+	fn := fns[idx]
+	urlStr := fmt.Sprintf("http://%s:%s", fn.IPAddress, fn.WatchdogPort)
 	urlRes, err := url.Parse(urlStr)
 	return *urlRes, err
 }

@@ -13,6 +13,9 @@ type FunctionCreateRequest struct {
 	// Image is a fully-qualified container image
 	Image string `json:"image"`
 
+	// WatchDogPort 是容器提供HTTP接口的端口号，默认8080
+	WatchDogPort string `json:"watchDogPort,omitempty"`
+
 	// Namespace for the function, if supported by the faas-provider
 	Namespace string `json:"namespace,omitempty"`
 

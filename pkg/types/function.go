@@ -10,9 +10,10 @@ type Function struct {
 	FullName string `json:"full_name"` // 容器名称
 	Status   string `json:"status"`    // 容器状态
 
-	Namespace string            `json:"namespace"` // 所在Namespace
-	IPAddress string            `json:"ip"`        // CNI分配的IP地址
-	Labels    map[string]string `json:"labels"`    // CNI bridge 用的
+	Namespace    string            `json:"namespace"` // 所在Namespace
+	IPAddress    string            `json:"ip"`        // CNI分配的IP地址
+	WatchdogPort string            `json:"port"`      // 服务所在端口
+	Labels       map[string]string `json:"labels"`    // CNI bridge 用的
 
 	EnvVars  map[string]string `json:"env"`       // 容器内的环境变量
 	Metadata map[string]string `json:"meta_data"` // 容器的Meta数据
