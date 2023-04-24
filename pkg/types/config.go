@@ -3,6 +3,7 @@ package types
 import (
 	"os"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/mitchellh/mapstructure"
@@ -15,16 +16,25 @@ const (
 )
 
 var (
-	home                = os.Getenv("HOME")
-	DEFAULT_CONFIG_PATH = path.Join(home, DEFAULT_SAVE_PATH)
-	config              = new(CQLessConfig)
+	home                              = os.Getenv("HOME")
+	DEFAULT_CONFIG_PATH               = path.Join(home, DEFAULT_SAVE_PATH)
+	config              *CQLessConfig = nil
+	mutex                             = sync.Mutex{}
 )
 
 func GetConfig() *CQLessConfig {
+	if config == nil {
+		mutex.Lock()
+		if config == nil {
+			initConfig()
+		}
+		mutex.Unlock()
+	}
 	return config
 }
 
-func init() {
+func initConfig() {
+	cfg := new(CQLessConfig)
 	if err := os.MkdirAll(DEFAULT_CONFIG_PATH, 0775); err != nil {
 		panic(err)
 	}
@@ -65,11 +75,12 @@ func init() {
 	if err := viper.ReadInConfig(); err != nil {
 		panic(err)
 	}
-	if err := viper.Unmarshal(config, viper.DecoderConfigOption(func(decoderConfig *mapstructure.DecoderConfig) {
+	if err := viper.Unmarshal(cfg, viper.DecoderConfigOption(func(decoderConfig *mapstructure.DecoderConfig) {
 		decoderConfig.TagName = "yaml"
 	})); err != nil {
 		panic(err)
 	}
+	config = cfg
 }
 
 type CQLessConfig struct {
