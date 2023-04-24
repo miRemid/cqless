@@ -20,13 +20,15 @@ import (
 
 const NameExpression = "-a-zA-Z_0-9."
 
-// gatewayCmd represents the gateway command
-var gatewayCmd = &cobra.Command{
-	Use:   "gateway",
-	Short: "setup CQLESS gateway for CQLESS provider",
-	Long: `gateway is the entry for the CQLESS function container, gateway will proxy 
+var (
+	config     = types.GetConfig()
+	gatewayCmd = &cobra.Command{
+		Use:   "gateway",
+		Short: "setup CQLESS gateway for CQLESS provider",
+		Long: `gateway is the entry for the CQLESS function container, gateway will proxy 
 	the cli invoke or message event from go-cqhttp to the deployed function`,
-}
+	}
+)
 
 func init() {
 	gatewayCmd.AddCommand(&cobra.Command{
@@ -35,12 +37,12 @@ func init() {
 		Long:  "Run gateway",
 		RunE:  runGateway,
 	})
+	gatewayCmd.Flags().StringP("help", "h", "", "gateway帮助文档")
 	rootCmd.AddCommand(gatewayCmd)
 }
 
 func runGateway(cmd *cobra.Command, args []string) error {
-
-	logger.InitLogger(types.GetConfig().Logger)
+	logger.InitLogger(config)
 	if err := gateway.Init(config); err != nil {
 		return err
 	}

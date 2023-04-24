@@ -16,35 +16,19 @@ limitations under the License.
 package cmd
 
 import (
-	"net/http"
 	"os"
 
-	"github.com/miRemid/cqless/pkg/types"
 	"github.com/spf13/cobra"
 )
-
-var (
-	config     = types.GetConfig()
-	httpClient *http.Client
-)
-
-var ()
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "cqless",
-	Short: "Container based serverless platform for CQHTTP",
-	Long:  `CQLESS is a serverless platform for CQHTTP.`,
-}
-
-func init() {
-
+	Short: "=w=",
+	Long:  `CQLESS命令行版`,
 }
 
 func Execute() {
-
-	httpClient = &http.Client{}
-
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)

@@ -1,14 +1,16 @@
 /*
 Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 */
-package cmd
+package function
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
 	"net/http"
+	"time"
 
 	"github.com/miRemid/cqless/pkg/httputil"
 	"github.com/miRemid/cqless/pkg/types"
@@ -20,7 +22,7 @@ import (
 // rmCmd represents the rm command
 var rmCmd = &cobra.Command{
 	Use:   "remove",
-	Short: "删除函数",
+	Short: "删除目标函数",
 	Run:   remove,
 }
 
@@ -30,9 +32,7 @@ var (
 )
 
 func init() {
-	functionCmd.AddCommand(rmCmd)
-
-	rmCmd.Flags().StringVarP(&functionName, "function-name", "f", "", "需要删除的函数名称")
+	rmCmd.Flags().StringVar(&functionName, "fn", "", "需要删除的函数名称")
 	rmCmd.Flags().BoolVarP(&removeAllFunction, "all", "a", true, "删除所有函数容器")
 	rmCmd.Flags().IntVar(&removeFunctionNumber, "number", math.MaxInt, "删除指定数量容器")
 }
@@ -73,8 +73,10 @@ func remove(cmd *cobra.Command, args []string) {
 		fmt.Println(err)
 		return
 	}
-	requestURI := fmt.Sprintf(cqless_function_api, httpClientGatewayAddress, config.Gateway.Port)
-	req, err := http.NewRequest(http.MethodDelete, requestURI, &buffer)
+	requestURI := fmt.Sprintf(cqless_function_api, httpClientGatewayAddress, httpClientGatewayPort)
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout))
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, requestURI, &buffer)
 	if err != nil {
 		fmt.Println(err)
 		return

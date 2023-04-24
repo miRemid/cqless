@@ -1,13 +1,15 @@
 /*
 Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 */
-package cmd
+package function
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/miRemid/cqless/pkg/httputil"
 	"github.com/miRemid/cqless/pkg/types"
@@ -19,8 +21,7 @@ import (
 // deployCmd represents the deploy command
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
-	Short: "",
-	Long:  ``,
+	Short: "部署",
 	Run:   deploy,
 }
 
@@ -30,12 +31,12 @@ var (
 )
 
 func init() {
-	functionCmd.AddCommand(deployCmd)
 	deployCmd.Flags().StringVarP(&deployFunctionName, "name", "n", "", "函数名称")
 	deployCmd.Flags().StringVarP(&deployFunctionImage, "image", "i", "", "容器镜像名称")
 }
 
 func deploy(cmd *cobra.Command, args []string) {
+
 	// 1. read yaml file
 	var reqBody types.FunctionCreateRequest
 	if functionConfigPath != "" {
@@ -63,8 +64,10 @@ func deploy(cmd *cobra.Command, args []string) {
 		fmt.Printf("序列化请求失败: %v\n", err)
 		return
 	}
-	requestURI := fmt.Sprintf(cqless_function_api, httpClientGatewayAddress, config.Gateway.Port)
-	req, err := http.NewRequest(http.MethodPost, requestURI, &buffer)
+	requestURI := fmt.Sprintf(cqless_function_api, httpClientGatewayAddress, httpClientGatewayPort)
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout))
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURI, &buffer)
 	if err != nil {
 		fmt.Println(err)
 		return

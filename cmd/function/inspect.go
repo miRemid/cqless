@@ -1,12 +1,14 @@
 /*
 Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 */
-package cmd
+package function
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/miRemid/cqless/pkg/httputil"
@@ -19,24 +21,18 @@ import (
 // inspectCmd represents the inspect command
 var inspectCmd = &cobra.Command{
 	Use:   "inspect",
-	Short: "",
-	Long:  ``,
+	Short: "检查",
 	Run:   inspect,
 }
 
 func init() {
-	functionCmd.AddCommand(inspectCmd)
-
-	inspectCmd.Flags().StringVarP(&functionName, "function-name", "f", "", "inspect given function name container")
+	inspectCmd.Flags().StringVar(&functionName, "fn", "", "需要检查的函数名称")
 }
 
 func inspect(cmd *cobra.Command, args []string) {
 	var reqBody types.FunctionInspectRequest
-	// 优先处理配置文件
 	if functionConfigPath != "" {
-		// 1. read yaml file
 		functionConfigReader.SetConfigFile(functionConfigPath)
-		// functionConfigReader.AddConfigPath(functionConfigPath)
 		if err := functionConfigReader.ReadInConfig(); err != nil {
 			fmt.Printf("读取部署文件配置失败: %v\n", err)
 			return
@@ -50,8 +46,10 @@ func inspect(cmd *cobra.Command, args []string) {
 	} else {
 		reqBody.FunctionName = functionName
 	}
-	var requestURI = fmt.Sprintf(cqless_function_api, httpClientGatewayAddress, config.Gateway.Port)
-	req, err := http.NewRequest(http.MethodGet, requestURI, nil)
+	var requestURI = fmt.Sprintf(cqless_function_api, httpClientGatewayAddress, httpClientGatewayPort)
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout))
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURI, nil)
 	if err != nil {
 		fmt.Println(err)
 		return

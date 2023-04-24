@@ -1,12 +1,14 @@
 /*
 Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 */
-package cmd
+package function
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/miRemid/cqless/pkg/types"
 	"github.com/mitchellh/mapstructure"
@@ -17,14 +19,12 @@ import (
 // invokeCmd represents the invoke command
 var invokeCmd = &cobra.Command{
 	Use:   "invoke",
-	Short: "invoke a function",
+	Short: "调用一个函数接口",
 	Run:   invoke,
 }
 
 func init() {
-	functionCmd.AddCommand(invokeCmd)
-
-	invokeCmd.Flags().StringVarP(&functionName, "function-name", "f", "", "function name")
+	invokeCmd.Flags().StringVar(&functionName, "fn", "", "需要调用的函数名称")
 }
 
 func invoke(cmd *cobra.Command, args []string) {
@@ -49,9 +49,10 @@ func invoke(cmd *cobra.Command, args []string) {
 	} else {
 		reqBody.FunctionName = functionName
 	}
-	requestURI := fmt.Sprintf(cqless_invoke_api, httpClientGatewayAddress, config.Gateway.Port, reqBody.FunctionName)
-
-	req, err := http.NewRequest(http.MethodPost, requestURI, nil)
+	requestURI := fmt.Sprintf(cqless_invoke_api, httpClientGatewayAddress, httpClientGatewayPort, reqBody.FunctionName)
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout))
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURI, nil)
 	if err != nil {
 		fmt.Println(err)
 		return
