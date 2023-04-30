@@ -7,9 +7,11 @@ import (
 	"path"
 	"strings"
 
+	"github.com/miRemid/cqless/pkg/gateway/resolver"
 	"github.com/miRemid/cqless/pkg/provider"
 	"github.com/miRemid/cqless/pkg/provider/docker"
 	"github.com/miRemid/cqless/pkg/types"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -29,6 +31,8 @@ func Init(config *types.CQLessConfig) error {
 
 type Gateway struct {
 	provider provider.ProviderPluginInterface
+
+	dns *resolver.Resolver
 }
 
 func (gate *Gateway) Init(config *types.GatewayConfig) error {
@@ -38,12 +42,15 @@ func (gate *Gateway) Init(config *types.GatewayConfig) error {
 	case "DOCKER":
 		gate.provider = docker.NewProvider()
 	default:
+		providerType = "DOCKER"
 		gate.provider = docker.NewProvider()
 	}
-
+	log.Info().Msgf("正在使用: '%s' 作为Provider", providerType)
 	if err := gate.provider.Init(config); err != nil {
 		return err
 	}
+	gate.dns = resolver.NewResolverFromConfig(config.Resolver)
+	log.Info().Msgf("正在使用：'%s' 作为Resolver", config.Resolver.Type)
 	return nil
 }
 

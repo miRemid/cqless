@@ -65,6 +65,10 @@ func initConfig() {
 		ReadTimeout:  60 * time.Second,
 		WriteTimeout: 60 * time.Second,
 		Provider:     "docker",
+		Resolver: &ResolverConfig{
+			Type:   "random",
+			Params: map[string]string{},
+		},
 	})
 	viper.AddConfigPath(DEFAULT_CONFIG_PATH)
 	if err := viper.SafeWriteConfig(); err != nil {
@@ -127,10 +131,16 @@ type ProxyConfig struct {
 }
 
 type GatewayConfig struct {
-	Provider     string        `yaml:"provider_type" mapstructure:"provider_type"`
-	Port         int           `yaml:"port" mapstructure:"port"`
-	ReadTimeout  time.Duration `yaml:"read_timeout" mapstructure:"read_timeout"`
-	WriteTimeout time.Duration `yaml:"write_timeout" mapstructure:"write_timeout"`
+	Provider     string          `yaml:"provider_type" mapstructure:"provider_type"`
+	Port         int             `yaml:"port" mapstructure:"port"`
+	ReadTimeout  time.Duration   `yaml:"read_timeout" mapstructure:"read_timeout"`
+	WriteTimeout time.Duration   `yaml:"write_timeout" mapstructure:"write_timeout"`
+	Resolver     *ResolverConfig `yaml:"resolver" mapstructure:"resolver"`
+}
+
+type ResolverConfig struct {
+	Type   string            `yaml:"type" mapstructure:"type"`
+	Params map[string]string `yaml:"params" mapstructure:"params"`
 }
 
 type CQHTTPConfig struct {

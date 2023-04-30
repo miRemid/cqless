@@ -1,10 +1,18 @@
 package resolver
 
 import (
-	"errors"
+	"fmt"
 	"net/url"
+	"strings"
 	"sync"
+
+	"github.com/miRemid/cqless/pkg/types"
+	"github.com/pkg/errors"
 )
+
+var newResolverFuncMap = map[string]func() resolver{
+	"RANDOM": RandomResolverFunc(),
+}
 
 type resolver interface {
 	Add(address *url.URL) error
@@ -17,6 +25,15 @@ type Resolver struct {
 	dns             map[string]resolver
 	resolverNewFunc func() resolver
 	rwmutex         sync.RWMutex
+}
+
+func NewResolverFromConfig(config *types.ResolverConfig) *Resolver {
+	resolverType := strings.ToUpper(config.Type)
+	fn, ok := newResolverFuncMap[resolverType]
+	if !ok {
+		panic(errors.New(fmt.Sprintf("Resolver错误：暂不支持 '%s' 类型", resolverType)))
+	}
+	return NewResolver(fn)
 }
 
 func NewResolver(newFunc func() resolver) *Resolver {
