@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"net/http"
 	"time"
 
@@ -26,15 +25,8 @@ var rmCmd = &cobra.Command{
 	Run:   remove,
 }
 
-var (
-	removeAllFunction    bool = true
-	removeFunctionNumber int  = math.MaxInt
-)
-
 func init() {
 	rmCmd.Flags().StringVar(&functionName, "fn", "", "需要删除的函数名称")
-	rmCmd.Flags().BoolVarP(&removeAllFunction, "all", "a", true, "删除所有函数容器")
-	rmCmd.Flags().IntVar(&removeFunctionNumber, "number", math.MaxInt, "删除指定数量容器")
 }
 
 func remove(cmd *cobra.Command, args []string) {
@@ -60,12 +52,6 @@ func remove(cmd *cobra.Command, args []string) {
 		return
 	} else {
 		reqBody.FunctionName = functionName
-	}
-	if removeFunctionNumber <= 0 {
-		fmt.Println("不合法的参数，删除的数量必须大于等于1")
-		return
-	} else {
-		reqBody.Number = removeFunctionNumber
 	}
 
 	var buffer bytes.Buffer

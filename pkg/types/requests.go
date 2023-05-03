@@ -106,8 +106,6 @@ type FunctionRequest struct {
 
 type FunctionRemoveRequest struct {
 	FunctionRequest
-	All    bool `form:"all" json:"all"`
-	Number int  `form:"number" json:"number"`
 }
 
 type FunctionInspectRequest struct {

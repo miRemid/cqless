@@ -18,14 +18,6 @@ func (p *DockerProvider) Remove(ctx context.Context, req types.FunctionRemoveReq
 	if len(fns) == 0 {
 		return errors.Errorf("未找到相关容器")
 	}
-	if !req.All {
-		if req.Number < 1 {
-			return errors.WithMessage(err, "删除容器数量必须大于1")
-		} else if req.Number < len(fns) {
-			fns = fns[:req.Number]
-		}
-
-	}
 	wg := sync.WaitGroup{}
 	errChannel := make(chan error, len(fns))
 	for _, fn := range fns {
