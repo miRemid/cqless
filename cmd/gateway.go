@@ -35,8 +35,17 @@ func init() {
 		Long:  "Run gateway",
 		RunE:  runGateway,
 	})
-	gatewayCmd.Flags().StringP("help", "h", "", "gateway帮助文档")
+	gatewayCmd.AddCommand(&cobra.Command{
+		Use:   "init",
+		Short: "生成配置文件",
+		Run:   runInitConfig,
+	})
 	rootCmd.AddCommand(gatewayCmd)
+}
+
+func runInitConfig(cmd *cobra.Command, args []string) {
+	types.GetConfig()
+	fmt.Printf("已生成配置文件至：%s\n", types.DEFAULT_CONFIG_PATH)
 }
 
 func runGateway(cmd *cobra.Command, args []string) error {
