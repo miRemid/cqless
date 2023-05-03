@@ -65,7 +65,7 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 	if functionName == "" {
 		httputil.BadRequest(ctx, httputil.Response{
 			Code:    httputil.ProxyNotFound,
-			Message: "Provider function name not in the request path",
+			Message: "未找到函数名称",
 		})
 		return
 	}
@@ -73,7 +73,7 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 	if !nameReg.MatchString(functionName) {
 		httputil.BadRequest(ctx, httputil.Response{
 			Code:    httputil.ProxyBadRequest,
-			Message: "Provider function name not valid",
+			Message: "函数名称不合法",
 		})
 		return
 	}
@@ -83,7 +83,7 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 		log.Err(resolveErr).Send()
 		httputil.BadRequest(ctx, httputil.Response{
 			Code:    httputil.ProxyBadRequest,
-			Message: "No endpoints available for: " + functionName,
+			Message: fmt.Sprintf("未找到 '%s' 函数", functionName),
 		})
 		return
 	}
@@ -94,7 +94,7 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 		log.Err(err).Send()
 		httputil.BadRequest(ctx, httputil.Response{
 			Code:    httputil.ProxyBadRequest,
-			Message: fmt.Sprintf("Failed to resolve service: %s.", functionName),
+			Message: fmt.Sprintf("获取目标函数 '%s' 地址失败", functionName),
 		})
 		return
 	}
@@ -110,7 +110,7 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 		log.Err(err).Send()
 		httputil.BadRequest(ctx, httputil.Response{
 			Code:    httputil.ProxyInternalServerError,
-			Message: fmt.Sprintf("Can't reach service for: %s.", functionName),
+			Message: fmt.Sprintf("网络无法到达 '%s' 函数", functionName),
 		})
 		return
 	}
@@ -129,7 +129,13 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 	responseContentType := response.Header.Get("Content-Type")
 	if strings.Contains(responseContentType, "json") {
 		var tmpData = make(map[string]interface{})
-		json.NewDecoder(bytes.NewBuffer(data)).Decode(&tmpData)
+		if err := json.NewDecoder(bytes.NewBuffer(data)).Decode(&tmpData); err != nil {
+			log.Err(err).Send()
+			httputil.BadRequest(ctx, httputil.Response{
+				Code:    httputil.ProxyInternalServerError,
+				Message: "解析函数返回数据错误",
+			})
+		}
 		reply.Data = tmpData
 	} else if strings.Contains(responseContentType, "text") {
 		reply.Data = string(data)
@@ -147,7 +153,9 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 		return
 	}
 	ctx.Writer.Header().Set("Content-Length", fmt.Sprintf("%d", len(buffer.Bytes())))
-	ctx.Writer.Write(buffer.Bytes())
+	if _, err := ctx.Writer.Write(buffer.Bytes()); err != nil {
+		log.Err(err).Send()
+	}
 }
 
 // buildProxyRequest creates a request object for the proxy request, it will ensure that
@@ -193,20 +201,4 @@ func copyHeaders(destination http.Header, source *http.Header) {
 		copy(vClone, v)
 		destination[k] = vClone
 	}
-}
-
-// getContentType resolves the correct Content-Type for a proxied function.
-func getContentType(request http.Header, proxyResponse http.Header) (headerContentType string) {
-	responseHeader := proxyResponse.Get("Content-Type")
-	requestHeader := request.Get("Content-Type")
-
-	if len(responseHeader) > 0 {
-		headerContentType = responseHeader
-	} else if len(requestHeader) > 0 {
-		headerContentType = requestHeader
-	} else {
-		headerContentType = defaultContentType
-	}
-
-	return headerContentType
 }
