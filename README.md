@@ -63,9 +63,8 @@ cqless提供了CLI工具用于对函数进行操作，同时支持配置文件�
 ```json
 // examples/helloworld/helloworld.json
 {
-    "name": "helloworld",
-    "image": "kamir3mid/helloworld:latest",
-
+  "name": "helloworld",
+  "image": "kamir3mid/helloworld:latest",
 }
 ```
 > 需要注意的是，目前所有函数对应的端口必须为8080
@@ -173,6 +172,28 @@ Global Flags:
 我们需要删除`helloworld`函数，只需如下指令
 ```shell
 cqless func remove -c examples/helloworld/helloworld.json
+```
+## 对接CQHTTP
+CQLESS使用反向Websocket对接CQHTTP机器人，并且支持多机器人同时接入，对接API如下
+```shell
+http://gateway:port/cqless
+```
+通过配置文件配置好命令前缀，默认为`!!`，随后CQLESS将会已空格为分界符分离出命令对应的函数名以及请求参数
+
+以`!!helloworld/echo 别当复读机啦！`为例，CQLESS将会检查消息是否为定义好的命令并分离出函数名称`helloworld/echo`和参数`别当复读机啦！`
+
+CQLESS支持二级命令，也就是说命令中只能包含一个`/`分隔符，请求的终端为函数中对应的路由地址
+
+#### 快速回复
+CQLESS同样支持和原生CQHTTP一样的快速回复功能，仅支持格式为`text`和`application/json`的数据回复
+
+当函数回复的数据格式为`text`时，CQLESS将会直接将返回的数据通过机器人发出
+
+当函数回复的数据格式为`application/json`时，则CQLESS会检查回复数据中是否存在`reply`字段，例如
+```json
+{
+  "reply": "别当复读机啦！"
+}
 ```
 
 ## License

@@ -84,6 +84,10 @@ func (m *CQHTTPManager) processMessageQueue() {
 			resp.Body.Close()
 			continue
 		}
+		if resp.StatusCode == 204 {
+			// 和CQHTTP一致，遇到204状态码不响应
+			continue
+		}
 		var response httputil.Response
 		if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 			log.Err(errors.Wrap(err, "parse response failed")).Send()

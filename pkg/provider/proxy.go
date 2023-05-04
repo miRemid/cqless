@@ -127,14 +127,16 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 		Message: "",
 	}
 	responseContentType := response.Header.Get("Content-Type")
+	log.Debug().Str("content-type", responseContentType).Str("data", string(data)).Send()
 	if strings.Contains(responseContentType, "json") {
-		var tmpData = make(map[string]interface{})
+		var tmpData interface{}
 		if err := json.NewDecoder(bytes.NewBuffer(data)).Decode(&tmpData); err != nil {
 			log.Err(err).Send()
 			httputil.BadRequest(ctx, httputil.Response{
 				Code:    httputil.ProxyInternalServerError,
 				Message: "解析函数返回数据错误",
 			})
+			return
 		}
 		reply.Data = tmpData
 	} else if strings.Contains(responseContentType, "text") {
