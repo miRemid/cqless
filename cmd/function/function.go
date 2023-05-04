@@ -31,7 +31,7 @@ func init() {
 func Init(functionCmd *cobra.Command) {
 	functionCmd.Run = functionCmd.HelpFunc()
 
-	functionCmd.PersistentFlags().IntVarP(&httpTimeout, "timeout", "t", 30, "执行超时时间，默认30s")
+	functionCmd.PersistentFlags().IntVarP(&httpTimeout, "timeout", "", 30, "执行超时时间，默认30s")
 	functionCmd.PersistentFlags().StringVarP(&httpClientGatewayAddress, "gateway", "g", "127.0.0.1", "网关地址，默认127.0.0.1")
 	functionCmd.PersistentFlags().IntVarP(&httpClientGatewayPort, "port", "p", 8888, "网关端口，默认8888")
 	functionCmd.PersistentFlags().StringVar(&functionNamespace, "namespace", types.DEFAULT_FUNCTION_NAMESPACE, "函数所在命名空间(Docker无需关心)")
