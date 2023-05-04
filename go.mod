@@ -6,7 +6,7 @@ require (
 	github.com/Mrs4s/MiraiGo v0.0.0-20230319092203-62d60f132203
 	github.com/buger/jsonparser v1.1.1
 	github.com/containerd/go-cni v1.1.9
-	github.com/docker/docker v23.0.1+incompatible
+	github.com/docker/docker v23.0.3+incompatible
 	github.com/gin-gonic/gin v1.9.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/jedib0t/go-pretty/v6 v6.4.6
