@@ -2,14 +2,11 @@ package docker
 
 import (
 	"context"
-	"os"
-	"path"
 	"strings"
 	"sync"
 
 	dtypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/mount"
 	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/types"
 	"github.com/rs/zerolog/log"
@@ -103,31 +100,31 @@ func (p *DockerProvider) getFunctionByContainer(ctx context.Context, c dtypes.Co
 }
 
 // Mount 宿主机的DNS信息和Hosts信息到容器中
-func (p *DockerProvider) getOSMounts() []mount.Mount {
-	hostsDir := types.DEFAULT_CONFIG_PATH
-	if v, ok := os.LookupEnv("hosts_dir"); ok && len(v) > 0 {
-		hostsDir = v
-	}
+// func (p *DockerProvider) getOSMounts() []mount.Mount {
+// 	hostsDir := types.DEFAULT_CONFIG_PATH
+// 	if v, ok := os.LookupEnv("hosts_dir"); ok && len(v) > 0 {
+// 		hostsDir = v
+// 	}
 
-	mounts := []mount.Mount{}
-	mounts = append(mounts, mount.Mount{
-		Target: "/etc/resolv.conf",
-		Type:   "bind",
-		Source: path.Join(hostsDir, "resolv.conf"),
-		BindOptions: &mount.BindOptions{
-			Propagation: mount.PropagationRPrivate,
-		},
-		ReadOnly: true,
-	})
+// 	mounts := []mount.Mount{}
+// 	mounts = append(mounts, mount.Mount{
+// 		Target: "/etc/resolv.conf",
+// 		Type:   "bind",
+// 		Source: path.Join(hostsDir, "resolv.conf"),
+// 		BindOptions: &mount.BindOptions{
+// 			Propagation: mount.PropagationRPrivate,
+// 		},
+// 		ReadOnly: true,
+// 	})
 
-	mounts = append(mounts, mount.Mount{
-		Target: "/etc/hosts",
-		Type:   "bind",
-		Source: path.Join(hostsDir, "hosts"),
-		BindOptions: &mount.BindOptions{
-			Propagation: mount.PropagationRPrivate,
-		},
-		ReadOnly: true,
-	})
-	return mounts
-}
+// 	mounts = append(mounts, mount.Mount{
+// 		Target: "/etc/hosts",
+// 		Type:   "bind",
+// 		Source: path.Join(hostsDir, "hosts"),
+// 		BindOptions: &mount.BindOptions{
+// 			Propagation: mount.PropagationRPrivate,
+// 		},
+// 		ReadOnly: true,
+// 	})
+// 	return mounts
+// }
