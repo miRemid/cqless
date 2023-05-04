@@ -104,7 +104,7 @@ func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateReq
 	containerName := fmt.Sprintf("%s-%x", req.Name, hashValue[:4])
 
 	envs := req.BuildEnv()
-	mounts := p.getOSMounts()
+	// mounts := p.getOSMounts()
 
 	var containerResources container.Resources
 
@@ -124,7 +124,7 @@ func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateReq
 			Image:    req.Image,
 		},
 		&container.HostConfig{
-			Mounts:      mounts,
+			// Mounts:      mounts,
 			Resources:   containerResources,
 			NetworkMode: "none", // 我们将使用cni来为container提供网络
 		},

@@ -28,7 +28,6 @@ func (c *CQHTTPManager) WebsocketHandler(ctx *gin.Context) {
 		log.Error().Err(err).Send()
 		return
 	}
-	// id := jsonparser.Get(message, "")
 	post_type, err := jsonparser.GetString(message, "post_type")
 	if err != nil {
 		log.Error().Err(err).Send()
@@ -73,5 +72,19 @@ func (c *CQHTTPManager) WebsocketHandler(ctx *gin.Context) {
 			panic(err)
 		}
 	}(wb)
-	log.Info().Msgf("establish websocket connection!")
+	log.Info().Msgf("已与ID=%d的机器人建立Websocket连接", id)
 }
+
+// func (c *CQHTTPManager) SendMessageHandler(ctx *gin.Context) {
+// 	// 将请求内容，转发至Websocket中
+// 	// 内容格式务必填写BOT的QQ号
+// 	var req = new(CQHTTPMessageRequest)
+// 	if err := ctx.Bind(req); err != nil {
+// 		httputil.BadRequest(ctx, httputil.Response{
+// 			Code:    httputil.StatusBadRequest,
+// 			Message: "发送数据格式错误",
+// 		})
+// 		return
+// 	}
+
+// }

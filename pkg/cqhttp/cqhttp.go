@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"sync"
 
 	"github.com/miRemid/cqless/pkg/httputil"
@@ -56,9 +57,9 @@ func (m *CQHTTPManager) processMessageQueue() {
 	// 从消息队列中持续读取
 	for {
 		msg := <-m.messageChan
-		log.Info().Msg(msg.Message)
+		log.Info().Str("message", msg.Message).Send()
 		// 解析命令, 获取参数
-		funcName, err := msg.Parser()
+		funcName, params, err := msg.Parser()
 		if err != nil {
 			log.Err(err).Send()
 			continue
@@ -66,9 +67,15 @@ func (m *CQHTTPManager) processMessageQueue() {
 		// 调用目标函数
 		cqless_invoke_api := "http://%s:%d/function/%s"
 		requestURI := fmt.Sprintf(cqless_invoke_api, "localhost", types.GetConfig().Gateway.Port, funcName)
+		uri, _ := url.Parse(requestURI)
+		query := uri.Query()
+		for _, p := range params {
+			query.Add("param", p)
+		}
+		uri.RawQuery = query.Encode()
 		var body bytes.Buffer
 		body.Write(msg.Body)
-		req, err := http.NewRequest(http.MethodPost, requestURI, &body)
+		req, err := http.NewRequest(http.MethodPost, uri.String(), &body)
 		if err != nil {
 			log.Err(errors.Wrap(err, "解析失败或过滤")).Send()
 			continue
@@ -101,23 +108,30 @@ func (m *CQHTTPManager) processMessageQueue() {
 			continue
 		}
 		resp.Body.Close()
-		rm := &CQHTTPMessage{
-			ID:          msg.ID,
-			MessageType: msg.MessageType,
+		// rm := &CQHTTPMessage{
+		// 	BOT:         msg.BOT,
+		// 	ID:          msg.ID,
+		// 	MessageType: msg.MessageType,
+		// }
+		if data, ok := response.Data.(string); ok {
+			msg.Message = data
+			// rm.Message = msg
+		} else if mpData, ok := response.Data.(map[string]interface{}); ok {
+			if message, ok := mpData["reply"]; ok {
+				if strMessage, ok := message.(string); ok {
+					// rm.Message = strMessage
+					msg.Message = strMessage
+				}
+			}
 		}
-		if msg, ok := response.Data.(string); ok {
-			rm.Message = msg
-		} else if msg, ok := response.Data.(map[string]interface{}); ok {
-			rm.Message = msg["reply"].(string)
-		}
-		m.quickReply <- rm
+		m.quickReply <- msg
 	}
 }
 
 func (m *CQHTTPManager) processQuickReployQueue() {
 	for {
 		msg := <-m.quickReply
-		tmp, ok := m.websockets_.Load(msg.ID)
+		tmp, ok := m.websockets_.Load(msg.BOT)
 		if ok {
 			wb := tmp.(*CQHTTPWebsocket)
 			if err := wb.Send(msg); err != nil {

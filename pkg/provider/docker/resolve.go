@@ -22,7 +22,12 @@ func (p *DockerProvider) Resolve(ctx context.Context, functionName string, cni *
 	newRand := rand.New(rand.NewSource(time.Now().Unix()))
 	idx := newRand.Intn(len(fns))
 	fn := fns[idx]
-	urlStr := fmt.Sprintf("http://%s:%s", fn.IPAddress, fn.WatchdogPort)
+	var urlStr string
+	if fn.WatchdogPort != "" {
+		urlStr = fmt.Sprintf("http://%s:%s", fn.IPAddress, fn.WatchdogPort)
+	} else {
+		urlStr = fmt.Sprintf("http://%s", fn.IPAddress)
+	}
 	urlRes, err := url.Parse(urlStr)
 	return *urlRes, err
 }

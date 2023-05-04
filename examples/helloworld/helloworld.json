@@ -1,4 +1,5 @@
 {
     "name": "helloworld",
-    "image": "kamir3mid/helloworld-func"
+    "image": "kamir3mid/helloworld-func",
+    "port": "8080"
 }

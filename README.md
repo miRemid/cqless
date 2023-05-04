@@ -60,14 +60,15 @@ cqless gateway up
 cqless提供了CLI工具用于对函数进行操作，同时支持配置文件和命令行参数输入，推荐使用配置文件更好管理
 
 在这我们提供了一个简单的函数镜像`kamir3mid/helloworld`，一个简单的函数配置文件如下：
-```json
-// examples/helloworld/helloworld.json
+```shell
+# examples/helloworld/helloworld.json
 {
   "name": "helloworld",
   "image": "kamir3mid/helloworld:latest",
+  "port": "8080",
 }
 ```
-> 需要注意的是，目前所有函数对应的端口必须为8080
+> 需要注意的是，目前所有函数对应的默认端口为8080
 
 #### 创建
 
@@ -182,7 +183,11 @@ http://gateway:port/cqless
 
 以`!!helloworld/echo 别当复读机啦！`为例，CQLESS将会检查消息是否为定义好的命令并分离出函数名称`helloworld/echo`和参数`别当复读机啦！`
 
-CQLESS支持二级命令，也就是说命令中只能包含一个`/`分隔符，请求的终端为函数中对应的路由地址
+CQLESS支持二级命令，也就是说命令中只能包含一个`/`分隔符，请求的终端为函数中对应的路由地址，如以下指令则现阶段无法支持
+```shell
+!!helloworld/echo/nini
+!!helloworld/e/dfdf/asdf
+```
 
 #### 快速回复
 CQLESS同样支持和原生CQHTTP一样的快速回复功能，仅支持格式为`text`和`application/json`的数据回复
@@ -195,6 +200,8 @@ CQLESS同样支持和原生CQHTTP一样的快速回复功能，仅支持格式�
   "reply": "别当复读机啦！"
 }
 ```
+
+如果不需要快速回复，则务必设置函数返回的状态码为204（与CQHTTP相同）
 
 ## License
 
