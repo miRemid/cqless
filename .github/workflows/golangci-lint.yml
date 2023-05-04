@@ -3,11 +3,6 @@ on:
   pull_request:
     branches:
       - main
-      - dev
-  push:
-    branches:
-      - dev
-      - 'feat/**'
 
 jobs:
   golangci:
