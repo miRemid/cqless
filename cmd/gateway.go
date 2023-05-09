@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/cqhttp"
@@ -58,6 +59,10 @@ func runGateway(cmd *cobra.Command, args []string) error {
 	route := gin.New()
 	route.Use(gin.Recovery())
 	route.Use(middleware.Logger())
+	if config.Gateway.EnablePprof {
+		log.Info().Msg("开启pprof性能分析")
+		pprof.Register(route)
+	}
 	proxyHandler := gateway.MakeProxyHandler(config.Proxy)
 
 	cqless := route.Group("/cqless")
