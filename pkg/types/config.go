@@ -69,6 +69,11 @@ func initConfig() {
 			Type:   "random",
 			Params: map[string]string{},
 		},
+		EnableRateLimit: false,
+		RateLimit: &RateLimitConfig{
+			Limit: 10,
+			Burst: 1000,
+		},
 	})
 	viper.AddConfigPath(DEFAULT_CONFIG_PATH)
 	if err := viper.SafeWriteConfig(); err != nil {
@@ -136,6 +141,14 @@ type GatewayConfig struct {
 	ReadTimeout  time.Duration   `yaml:"read_timeout" mapstructure:"read_timeout"`
 	WriteTimeout time.Duration   `yaml:"write_timeout" mapstructure:"write_timeout"`
 	Resolver     *ResolverConfig `yaml:"resolver" mapstructure:"resolver"`
+
+	EnableRateLimit bool             `yaml:"enable_rate_limit" mapstructure:"enable_rate_limit"`
+	RateLimit       *RateLimitConfig `yaml:"rate_limit" mapstructure:"rate_limit"`
+}
+
+type RateLimitConfig struct {
+	Limit float64 `yaml:"limit" mapstructure:"limit"`
+	Burst int     `yaml:"burst" mapstructure:"burst"`
 }
 
 type ResolverConfig struct {

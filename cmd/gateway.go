@@ -44,7 +44,6 @@ func init() {
 }
 
 func runInitConfig(cmd *cobra.Command, args []string) {
-	types.GetConfig()
 	fmt.Printf("已生成配置文件至：%s\n", types.DEFAULT_CONFIG_PATH)
 }
 
@@ -69,6 +68,10 @@ func runGateway(cmd *cobra.Command, args []string) error {
 	}
 
 	function := route.Group("/function")
+	if config.Gateway.EnableRateLimit {
+		function.Use(middleware.RateLimit(config.Gateway.RateLimit))
+	}
+
 	{
 		function.POST("/:name", proxyHandler)
 		function.POST("/:name/:params", proxyHandler)
