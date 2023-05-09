@@ -35,7 +35,7 @@ func (gate *Gateway) MakeProxyHandler(config *types.ProxyConfig, cni *cninetwork
 		default:
 			httputil.JSON(ctx, http.StatusMethodNotAllowed, httputil.Response{
 				Code:    httputil.ProxyNotAllowed,
-				Message: "request method not allowed",
+				Message: "暂未支持的请求方式: " + ctx.Request.Method,
 			})
 		}
 	}

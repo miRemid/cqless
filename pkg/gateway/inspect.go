@@ -5,7 +5,6 @@ import (
 	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/httputil"
 	"github.com/miRemid/cqless/pkg/types"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -19,22 +18,19 @@ func (gate *Gateway) MakeInspectHandler(cni *cninetwork.CNIManager) gin.HandlerF
 		var req types.FunctionInspectRequest
 		if err := ctx.Bind(&req); err != nil {
 			log.Err(err).Send()
-			httputil.BadRequest(ctx, httputil.Response{
-				Code:    httputil.ProxyBadRequest,
-				Message: errors.Wrapf(err, "binding failed").Error(),
-			})
+			httputil.BadRequest(ctx)
 			return
 		}
 		fns, err := gate.provider.Inspect(ctx, req, cni)
 		if err != nil {
-			log.Err(err).Send()
-			httputil.BadRequest(ctx, httputil.Response{
-				Code:    httputil.ProxyBadRequest,
-				Message: errors.Wrapf(err, "get functions failed").Error(),
+			log.Err(err).Msgf("获取函数 '%s' 信息失败", req.FunctionName)
+			httputil.OKWithJSON(ctx, httputil.Response{
+				Code:    httputil.StatusBadRequest,
+				Message: err.Error(),
 			})
 			return
 		}
-		httputil.OK(ctx, httputil.Response{
+		httputil.OKWithJSON(ctx, httputil.Response{
 			Code: httputil.StatusOK,
 			Data: fns,
 		})

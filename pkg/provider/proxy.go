@@ -63,7 +63,7 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 	// w, originalReq := ctx.Writer, ctx.Request
 	functionName := ctx.Param("name")
 	if functionName == "" {
-		httputil.BadRequest(ctx, httputil.Response{
+		httputil.BadRequestWithJSON(ctx, httputil.Response{
 			Code:    httputil.ProxyNotFound,
 			Message: "未找到函数名称",
 		})
@@ -71,7 +71,7 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 	}
 	log.Debug().Any("params", ctx.Params).Str("functionName", functionName).Send()
 	if !nameReg.MatchString(functionName) {
-		httputil.BadRequest(ctx, httputil.Response{
+		httputil.BadRequestWithJSON(ctx, httputil.Response{
 			Code:    httputil.ProxyBadRequest,
 			Message: "函数名称不合法",
 		})
@@ -80,19 +80,19 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 
 	functionAddr, resolveErr := plugin.Resolve(ctx, functionName, cni)
 	if resolveErr != nil {
-		log.Err(resolveErr).Send()
-		httputil.BadRequest(ctx, httputil.Response{
+		log.Err(resolveErr).Msgf("获取目标函数 '%s' IP地址失败", functionName)
+		httputil.BadRequestWithJSON(ctx, httputil.Response{
 			Code:    httputil.ProxyBadRequest,
 			Message: fmt.Sprintf("未找到 '%s' 函数", functionName),
 		})
 		return
 	}
-	log.Debug().Any("functionAddr", functionAddr).Send()
+	log.Debug().Str("functionAddr", functionAddr.String()).Send()
 
 	proxyReq, err := buildProxyRequest(ctx.Request, functionAddr, ctx.Param("params"))
 	if err != nil {
 		log.Err(err).Send()
-		httputil.BadRequest(ctx, httputil.Response{
+		httputil.BadRequestWithJSON(ctx, httputil.Response{
 			Code:    httputil.ProxyBadRequest,
 			Message: fmt.Sprintf("获取目标函数 '%s' 地址失败", functionName),
 		})
@@ -106,33 +106,38 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 	start := time.Now()
 	response, err := proxyClient.Do(proxyReq.WithContext(ctx))
 	seconds := time.Since(start)
-	if err != nil {
-		log.Err(err).Send()
-		httputil.BadRequest(ctx, httputil.Response{
+	log.Err(err).Msgf("请求上游函数 '%s' 失败", functionName)
+	if err, ok := err.(*url.Error); ok && err.Timeout() {
+		httputil.TimeoutWithJSON(ctx, httputil.Response{
+			Code:    httputil.ProxyTimeout,
+			Message: fmt.Sprintf("请求 '%s' 函数超时", functionName),
+		})
+		return
+	} else if err != nil {
+		httputil.BadGatewayWithJSON(ctx, httputil.Response{
 			Code:    httputil.ProxyInternalServerError,
 			Message: fmt.Sprintf("网络无法到达 '%s' 函数", functionName),
 		})
 		return
 	}
 	defer response.Body.Close()
-	log.Printf("%s took %f seconds\n", functionName, seconds.Seconds())
+	log.Printf("请求函数 '%s' 共使用%f秒\n", functionName, seconds.Seconds())
 	data, _ := io.ReadAll(response.Body)
 
 	clientHeader := ctx.Writer.Header()
 	copyHeaders(clientHeader, &response.Header)
-	ctx.Writer.WriteHeader(response.StatusCode)
 
 	reply := httputil.Response{
 		Code:    httputil.StatusOK,
 		Message: "",
 	}
 	responseContentType := response.Header.Get("Content-Type")
-	log.Debug().Str("content-type", responseContentType).Str("data", string(data)).Send()
+	log.Debug().Str("content-type", responseContentType).Str("data", string(data)).Msg("检查回复Content-Type")
 	if strings.Contains(responseContentType, "json") {
 		var tmpData interface{}
 		if err := json.NewDecoder(bytes.NewBuffer(data)).Decode(&tmpData); err != nil {
-			log.Err(err).Send()
-			httputil.BadRequest(ctx, httputil.Response{
+			log.Err(err).Msgf("解析函数 '%s' 失败", functionName)
+			httputil.BadRequestWithJSON(ctx, httputil.Response{
 				Code:    httputil.ProxyInternalServerError,
 				Message: "解析函数返回数据错误",
 			})
@@ -147,13 +152,14 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin ProviderPlu
 
 	var buffer bytes.Buffer
 	if err := json.NewEncoder(&buffer).Encode(reply); err != nil {
-		log.Err(err).Send()
-		httputil.BadRequest(ctx, httputil.Response{
+		log.Err(err).Msg("编码失败")
+		httputil.BadRequestWithJSON(ctx, httputil.Response{
 			Code:    httputil.ProxyInternalServerError,
-			Message: fmt.Sprintf("Can't reach service for: %s.", functionName),
+			Message: "编码函数返回数据失败",
 		})
 		return
 	}
+	ctx.Writer.WriteHeader(response.StatusCode)
 	ctx.Writer.Header().Set("Content-Length", fmt.Sprintf("%d", len(buffer.Bytes())))
 	if _, err := ctx.Writer.Write(buffer.Bytes()); err != nil {
 		log.Err(err).Send()
