@@ -2,10 +2,10 @@ package gateway
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/miRemid/cqless/pkg/gateway/resolver"
 	"github.com/miRemid/cqless/pkg/provider"
@@ -15,17 +15,21 @@ import (
 )
 
 var (
-	defaultGateway     *Gateway
-	defaultProxyClient *http.Client
+	defaultGateway  *Gateway
+	proxyClientPool *sync.Pool
 )
 
 func init() {
 	defaultGateway = new(Gateway)
-	defaultProxyClient = http.DefaultClient
 }
 
 func Init(config *types.CQLessConfig) error {
-	defaultProxyClient = provider.NewProxyClientFromConfig(config.Proxy)
+	// https://github.com/rfyiamcool/notes/blob/main/golang_net_http_optimize.md
+	proxyClientPool = &sync.Pool{
+		New: func() any {
+			return provider.NewProxyClientFromConfig(config.Proxy)
+		},
+	}
 	return defaultGateway.Init(config.Gateway)
 }
 
