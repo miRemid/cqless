@@ -19,6 +19,10 @@ func (gate *Gateway) MakeProxyHandler(config *types.ProxyConfig, cni *cninetwork
 		if ctx.Request.Body != nil {
 			defer ctx.Request.Body.Close()
 		}
+
+		proxyClient := proxyClientPool.Get().(*http.Client)
+		defer proxyClientPool.Put(proxyClient)
+
 		switch ctx.Request.Method {
 		case http.MethodPost,
 			http.MethodPut,
@@ -27,7 +31,7 @@ func (gate *Gateway) MakeProxyHandler(config *types.ProxyConfig, cni *cninetwork
 			http.MethodGet,
 			http.MethodOptions,
 			http.MethodHead:
-			provider.ProxyRequest(ctx, defaultProxyClient, gate.provider, cni)
+			provider.ProxyRequest(ctx, proxyClient, gate.provider, cni)
 		default:
 			httputil.JSON(ctx, http.StatusMethodNotAllowed, httputil.Response{
 				Code:    httputil.ProxyNotAllowed,

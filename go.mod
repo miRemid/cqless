@@ -7,6 +7,7 @@ require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/containerd/go-cni v1.1.9
 	github.com/docker/docker v23.0.3+incompatible
+	github.com/gin-contrib/pprof v1.4.0
 	github.com/gin-gonic/gin v1.9.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/jedib0t/go-pretty/v6 v6.4.6
@@ -19,6 +20,7 @@ require (
 	github.com/spf13/viper v1.15.0
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
+	golang.org/x/time v0.3.0
 	gotest.tools/v3 v3.4.0
 	k8s.io/apimachinery v0.26.2
 )
@@ -71,7 +73,6 @@ require (
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
-	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.5.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect

@@ -74,6 +74,7 @@ func initConfig() {
 			Limit: 10,
 			Burst: 1000,
 		},
+		EnablePprof: true,
 	})
 	viper.AddConfigPath(DEFAULT_CONFIG_PATH)
 	if err := viper.SafeWriteConfig(); err != nil {
@@ -144,6 +145,8 @@ type GatewayConfig struct {
 
 	EnableRateLimit bool             `yaml:"enable_rate_limit" mapstructure:"enable_rate_limit"`
 	RateLimit       *RateLimitConfig `yaml:"rate_limit" mapstructure:"rate_limit"`
+
+	EnablePprof bool `yaml:"pprof" mapstructure:"pprof"`
 }
 
 type RateLimitConfig struct {
