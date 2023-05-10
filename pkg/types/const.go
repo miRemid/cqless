@@ -7,4 +7,6 @@ const (
 
 	DEFAULT_ANNOTATION_LABEL_PREFIX = "com.cqless.annotations"
 	DEFAULT_SAVE_PATH               = ".local/share/cqless"
+
+	DEFAULT_WATCHDOG_PORT = "8080"
 )

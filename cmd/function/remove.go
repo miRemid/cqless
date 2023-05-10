@@ -59,7 +59,7 @@ func remove(cmd *cobra.Command, args []string) {
 		fmt.Println(err)
 		return
 	}
-	requestURI := fmt.Sprintf(cqless_function_api, httpClientGatewayAddress, httpClientGatewayPort)
+	requestURI := getApiRequestURI()
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout)*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, requestURI, &buffer)

@@ -3,6 +3,7 @@ package types
 import (
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -20,6 +21,7 @@ var (
 	DEFAULT_CONFIG_PATH               = path.Join(home, DEFAULT_SAVE_PATH)
 	config              *CQLessConfig = nil
 	mutex                             = sync.Mutex{}
+	DEBUG               string
 )
 
 func GetConfig() *CQLessConfig {
@@ -52,7 +54,6 @@ func initConfig() {
 		SubNet:          "10.72.0.0/16",
 	})
 	viper.SetDefault("logger", LoggerConfig{
-		Debug:    true,
 		SavePath: path.Join(DEFAULT_CONFIG_PATH, defaultLogPath),
 	})
 	viper.SetDefault("proxy", ProxyConfig{
@@ -62,6 +63,7 @@ func initConfig() {
 	})
 	viper.SetDefault("gateway", GatewayConfig{
 		Port:         5566,
+		APIPort:      5567,
 		ReadTimeout:  60 * time.Second,
 		WriteTimeout: 60 * time.Second,
 		Provider:     "docker",
@@ -91,6 +93,12 @@ func initConfig() {
 		panic(err)
 	}
 	config = cfg
+	d, ok := os.LookupEnv("DEBUG_MODE")
+	if ok {
+		DEBUG = strings.ToUpper(d)
+	} else {
+		DEBUG = "TRUE"
+	}
 }
 
 type CQLessConfig struct {
@@ -127,7 +135,6 @@ type NetworkConfig struct {
 
 type LoggerConfig struct {
 	SavePath string `yaml:"save_path" mapstructure:"save_path"`
-	Debug    bool   `yaml:"debug_mode" mapstructure:"debug_mode"`
 }
 
 type ProxyConfig struct {
@@ -139,6 +146,7 @@ type ProxyConfig struct {
 type GatewayConfig struct {
 	Provider     string          `yaml:"provider_type" mapstructure:"provider_type"`
 	Port         int             `yaml:"port" mapstructure:"port"`
+	APIPort      int             `yaml:"api_port" mapstructure:"api_port"`
 	ReadTimeout  time.Duration   `yaml:"read_timeout" mapstructure:"read_timeout"`
 	WriteTimeout time.Duration   `yaml:"write_timeout" mapstructure:"write_timeout"`
 	Resolver     *ResolverConfig `yaml:"resolver" mapstructure:"resolver"`

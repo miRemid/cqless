@@ -4,8 +4,12 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
+	"time"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
@@ -34,7 +38,7 @@ func init() {
 		Use:   "up",
 		Short: "Run gateway",
 		Long:  "Run gateway",
-		RunE:  runGateway,
+		Run:   runGateway,
 	})
 	gatewayCmd.AddCommand(&cobra.Command{
 		Use:   "init",
@@ -48,45 +52,53 @@ func runInitConfig(cmd *cobra.Command, args []string) {
 	fmt.Printf("已生成配置文件至：%s\n", types.DEFAULT_CONFIG_PATH)
 }
 
-func runGateway(cmd *cobra.Command, args []string) error {
-	logger.InitLogger(config)
-	if err := gateway.Init(config); err != nil {
-		return err
-	}
-	if err := cninetwork.Init(config); err != nil {
-		return err
-	}
+func getApiServer(ctx context.Context) *http.Server {
 	route := gin.New()
 	route.Use(gin.Recovery())
-	route.Use(middleware.Logger())
+	route.Use(middleware.Logger("api"))
+	if config.Gateway.EnablePprof {
+		log.Info().Msg("开启pprof性能分析")
+		pprof.Register(route)
+	}
+	v1 := route.Group("/api/v1")
+	{
+		cqless := v1.Group("/cqless")
+		{
+			cqless.POST("/function", gateway.MakeDeployHandler("", false))
+			cqless.DELETE("/function", gateway.MakeRemoveHandler())
+			cqless.GET("/function", gateway.MakeInspectHandler())
+		}
+
+		cq := v1.Group("/cqhttp")
+		{
+			cq.Match([]string{http.MethodGet, http.MethodPost}, "", cqhttp.GetDefaultCQHTTPManager().WebsocketHandler)
+		}
+	}
+	server := &http.Server{
+		Addr:           fmt.Sprintf(":%d", config.Gateway.APIPort),
+		Handler:        route,
+		ReadTimeout:    config.Gateway.ReadTimeout,
+		WriteTimeout:   config.Gateway.WriteTimeout,
+		MaxHeaderBytes: http.DefaultMaxHeaderBytes,
+	}
+	return server
+}
+
+func getProxyServer(ctx context.Context) *http.Server {
+	route := gin.New()
+	route.Use(gin.Recovery())
+	route.Use(middleware.Logger("proxy"))
 	if config.Gateway.EnablePprof {
 		log.Info().Msg("开启pprof性能分析")
 		pprof.Register(route)
 	}
 	proxyHandler := gateway.MakeProxyHandler(config.Proxy)
 
-	cqless := route.Group("/cqless")
-	{
-		cqless.POST("/function", gateway.MakeDeployHandler("", false))
-		cqless.DELETE("/function", gateway.MakeRemoveHandler())
-		cqless.GET("/function", gateway.MakeInspectHandler())
-	}
-
-	function := route.Group("/function")
+	proxy := route.Group("/")
 	if config.Gateway.EnableRateLimit {
-		function.Use(middleware.RateLimit(config.Gateway.RateLimit))
+		proxy.Use(middleware.RateLimit(config.Gateway.RateLimit))
 	}
-
-	{
-		function.POST("/:name", proxyHandler)
-		function.POST("/:name/:params", proxyHandler)
-	}
-
-	// CQHTTP Websocket
-	cq := route.Group("/cqhttp")
-	{
-		cq.Match([]string{http.MethodGet, http.MethodPost}, "", cqhttp.GetDefaultCQHTTPManager().WebsocketHandler)
-	}
+	proxy.POST("/*proxyPath", proxyHandler)
 
 	server := &http.Server{
 		Addr:           fmt.Sprintf(":%d", config.Gateway.Port),
@@ -95,6 +107,39 @@ func runGateway(cmd *cobra.Command, args []string) error {
 		WriteTimeout:   config.Gateway.WriteTimeout,
 		MaxHeaderBytes: http.DefaultMaxHeaderBytes,
 	}
-	log.Info().Str("msg", fmt.Sprintf("start listen at port: %d", config.Gateway.Port)).Send()
-	return server.ListenAndServe()
+	return server
+}
+
+func runGateway(cmd *cobra.Command, args []string) {
+	logger.InitLogger(config)
+	if err := gateway.Init(config); err != nil {
+		panic(err)
+	}
+	if err := cninetwork.Init(config); err != nil {
+		panic(err)
+	}
+
+	if types.DEBUG == "FALSE" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	ctx := context.Background()
+	ctx, done := signal.NotifyContext(ctx, os.Interrupt, os.Kill)
+	apiServer := getApiServer(ctx)
+	proxyServer := getProxyServer(ctx)
+
+	go apiServer.ListenAndServe()
+	go proxyServer.ListenAndServe()
+	<-ctx.Done()
+	done()
+
+	log.Info().Msg("收到退出信号")
+	apictx, cancelApi := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelApi()
+	log.Info().Msg("正在关闭API服务")
+	apiServer.Shutdown(apictx)
+	proxyctx, cancelProxy := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelProxy()
+	log.Info().Msg("正在关闭Proxy服务")
+	proxyServer.Shutdown(proxyctx)
 }

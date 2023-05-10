@@ -15,8 +15,7 @@ import (
 )
 
 var (
-	defaultGateway  *Gateway
-	proxyClientPool *sync.Pool
+	defaultGateway *Gateway
 )
 
 func init() {
@@ -27,7 +26,7 @@ func Init(config *types.CQLessConfig) error {
 	// https://github.com/rfyiamcool/notes/blob/main/golang_net_http_optimize.md
 	proxyClientPool = &sync.Pool{
 		New: func() any {
-			return provider.NewProxyClientFromConfig(config.Proxy)
+			return NewProxyClientFromConfig(config.Proxy)
 		},
 	}
 	return defaultGateway.Init(config.Gateway)

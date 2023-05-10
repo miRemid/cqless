@@ -67,7 +67,7 @@ func deploy(cmd *cobra.Command, args []string) {
 		fmt.Printf("序列化请求失败: %v\n", err)
 		return
 	}
-	requestURI := fmt.Sprintf(cqless_function_api, httpClientGatewayAddress, httpClientGatewayPort)
+	requestURI := getApiRequestURI()
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout)*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURI, &buffer)

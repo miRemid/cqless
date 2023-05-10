@@ -46,7 +46,8 @@ func inspect(cmd *cobra.Command, args []string) {
 	} else {
 		reqBody.FunctionName = functionName
 	}
-	var requestURI = fmt.Sprintf(cqless_function_api, httpClientGatewayAddress, httpClientGatewayPort)
+
+	requestURI := getApiRequestURI()
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout)*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURI, nil)
@@ -65,9 +66,10 @@ func inspect(cmd *cobra.Command, args []string) {
 		return
 	}
 	defer resp.Body.Close()
+
 	var response httputil.Response
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		fmt.Println(err)
+		fmt.Printf("处理查询数据错误: %v", err)
 		return
 	}
 	if fns, ok := response.Data.([]interface{}); ok {
