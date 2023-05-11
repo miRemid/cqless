@@ -3,7 +3,6 @@ module github.com/miRemid/cqless
 go 1.20
 
 require (
-	github.com/Mrs4s/MiraiGo v0.0.0-20230319092203-62d60f132203
 	github.com/buger/jsonparser v1.1.1
 	github.com/containerd/go-cni v1.1.9
 	github.com/docker/docker v23.0.3+incompatible
@@ -11,11 +10,9 @@ require (
 	github.com/gin-gonic/gin v1.9.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/jedib0t/go-pretty/v6 v6.4.6
-	github.com/mattn/go-colorable v0.1.13
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.0
-	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0
 	github.com/vishvananda/netlink v1.2.1-beta.2
@@ -50,6 +47,7 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/moby/term v0.0.0-20221205130635-1aeaba878587 // indirect
