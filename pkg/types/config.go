@@ -60,11 +60,6 @@ func initConfig() {
 		MaxSize:        500,
 		MaxAge:         7,
 	})
-	viper.SetDefault("proxy", ProxyConfig{
-		Timeout:             10 * time.Second,
-		MaxIdleConns:        30,
-		MaxIdleConnsPerHost: 30,
-	})
 	viper.SetDefault("gateway", GatewayConfig{
 		Port:         5566,
 		APIPort:      5567,
@@ -81,6 +76,11 @@ func initConfig() {
 			Burst: 1000,
 		},
 		EnablePprof: true,
+		Proxy: &ProxyConfig{
+			Timeout:             10 * time.Second,
+			MaxIdleConns:        30,
+			MaxIdleConnsPerHost: 30,
+		},
 	})
 	viper.AddConfigPath(DEFAULT_CONFIG_PATH)
 	if err := viper.SafeWriteConfig(); err != nil {
@@ -108,7 +108,6 @@ func initConfig() {
 type CQLessConfig struct {
 	Network *NetworkConfig `yaml:"network" mapstructure:"network"`
 	Logger  *LoggerConfig  `yaml:"logger" mapstructure:"logger"`
-	Proxy   *ProxyConfig   `yaml:"proxy" mapstructure:"proxy"`
 	Gateway *GatewayConfig `yaml:"gateway" mapstructure:"gateway"`
 	CQHTTP  *CQHTTPConfig  `yaml:"cqhttp" mapstructure:"cqhttp"`
 }
@@ -164,6 +163,8 @@ type GatewayConfig struct {
 	RateLimit       *RateLimitConfig `yaml:"rate_limit" mapstructure:"rate_limit"`
 
 	EnablePprof bool `yaml:"pprof" mapstructure:"pprof"`
+
+	Proxy *ProxyConfig `yaml:"proxy"`
 }
 
 type RateLimitConfig struct {

@@ -25,19 +25,15 @@ func init() {
 }
 
 func Init(config *types.CQLessConfig) error {
-	// https://github.com/rfyiamcool/notes/blob/main/golang_net_http_optimize.md
-	proxyClientPool = &sync.Pool{
-		New: func() any {
-			return NewProxyClientFromConfig(config.Proxy)
-		},
-	}
+
 	return defaultGateway.Init(config.Gateway)
 }
 
 type Gateway struct {
-	provider provider.ProviderPluginInterface
-	dns      *resolver.Resolver
-	log      zerolog.Logger
+	provider        provider.ProviderPluginInterface
+	dns             *resolver.Resolver
+	log             zerolog.Logger
+	proxyClientPool *sync.Pool
 }
 
 func (gate *Gateway) Init(config *types.GatewayConfig) error {
@@ -56,6 +52,14 @@ func (gate *Gateway) Init(config *types.GatewayConfig) error {
 	}
 	gate.dns = resolver.NewResolverFromConfig(config.Resolver)
 	gate.log.Info().Msgf("正在使用：'%s' 作为Resolver", config.Resolver.Type)
+
+	// https://github.com/rfyiamcool/notes/blob/main/golang_net_http_optimize.md
+	gate.proxyClientPool = &sync.Pool{
+		New: func() any {
+			return NewProxyClientFromConfig(config.Proxy)
+		},
+	}
+
 	return nil
 }
 

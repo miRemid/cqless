@@ -34,11 +34,11 @@ func init() {
 	nameReg, _ = regexp.Compile(nameExpression)
 }
 
-func MakeProxyHandler(config *types.ProxyConfig) gin.HandlerFunc {
-	return defaultGateway.MakeProxyHandler(config, cninetwork.DefaultManager)
+func MakeProxyHandler() gin.HandlerFunc {
+	return defaultGateway.MakeProxyHandler(cninetwork.DefaultManager)
 }
 
-func (gate *Gateway) MakeProxyHandler(config *types.ProxyConfig, cni *cninetwork.CNIManager) gin.HandlerFunc {
+func (gate *Gateway) MakeProxyHandler(cni *cninetwork.CNIManager) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if ctx.Request.Body != nil {
 			defer ctx.Request.Body.Close()

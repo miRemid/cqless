@@ -92,7 +92,7 @@ func getProxyServer(ctx context.Context) *http.Server {
 		log.Info().Msg("开启pprof性能分析")
 		pprof.Register(route)
 	}
-	proxyHandler := gateway.MakeProxyHandler(config.Proxy)
+	proxyHandler := gateway.MakeProxyHandler()
 
 	proxy := route.Group("/")
 	if config.Gateway.EnableRateLimit {
