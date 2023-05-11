@@ -4,9 +4,14 @@ import (
 	"context"
 
 	"github.com/docker/docker/client"
+	"github.com/miRemid/cqless/pkg/logger"
 	"github.com/miRemid/cqless/pkg/provider"
 	"github.com/miRemid/cqless/pkg/types"
+
+	zerolog "github.com/rs/zerolog/log"
 )
+
+var log = zerolog.Hook(logger.ModuleHook("provider"))
 
 type DockerProvider struct {
 	cli   *client.Client

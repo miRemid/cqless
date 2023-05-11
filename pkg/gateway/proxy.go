@@ -17,9 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/httputil"
-	"github.com/miRemid/cqless/pkg/provider"
 	"github.com/miRemid/cqless/pkg/types"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -46,9 +44,6 @@ func (gate *Gateway) MakeProxyHandler(config *types.ProxyConfig, cni *cninetwork
 			defer ctx.Request.Body.Close()
 		}
 
-		proxyClient := proxyClientPool.Get().(*http.Client)
-		defer proxyClientPool.Put(proxyClient)
-
 		switch ctx.Request.Method {
 		case http.MethodPost,
 			http.MethodPut,
@@ -57,7 +52,7 @@ func (gate *Gateway) MakeProxyHandler(config *types.ProxyConfig, cni *cninetwork
 			http.MethodGet,
 			http.MethodOptions,
 			http.MethodHead:
-			ProxyRequest(ctx, proxyClient, gate.provider, cni)
+			gate.proxyRequest(ctx, cni)
 		default:
 			httputil.JSON(ctx, http.StatusMethodNotAllowed, httputil.Response{
 				Code:    httputil.ProxyNotAllowed,
@@ -83,28 +78,28 @@ func extractFunctionProxy(req *http.Request) (string, string, error) {
 
 // ProxyRequest
 // /funcName/
-func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin provider.ProviderPluginInterface, cni *cninetwork.CNIManager) {
+func (gate *Gateway) proxyRequest(ctx *gin.Context, cni *cninetwork.CNIManager) {
 	functionName, proxyURI, err := extractFunctionProxy(ctx.Request)
 	if err != nil {
-		log.Err(err).Msgf("解析请求 '%s' 失败", ctx.Request.RequestURI)
+		gate.log.Err(err).Msgf("解析请求 '%s' 失败", ctx.Request.RequestURI)
 	}
 
-	log.Debug().Any("proxyPath", proxyURI).Str("functionName", functionName).Send()
+	gate.log.Debug().Any("proxyPath", proxyURI).Str("functionName", functionName).Send()
 
-	functionAddr, resolveErr := plugin.Resolve(ctx, functionName, cni)
+	functionAddr, resolveErr := gate.provider.Resolve(ctx, functionName, cni)
 	if resolveErr != nil {
-		log.Err(resolveErr).Msgf("获取目标函数 '%s' IP地址失败", functionName)
+		gate.log.Err(resolveErr).Msgf("获取目标函数 '%s' IP地址失败", functionName)
 		httputil.BadRequestWithJSON(ctx, httputil.Response{
 			Code:    httputil.ProxyBadRequest,
 			Message: fmt.Sprintf("未找到 '%s' 函数", functionName),
 		})
 		return
 	}
-	log.Debug().Str("functionAddr", functionAddr.String()).Send()
+	gate.log.Debug().Str("functionAddr", functionAddr.String()).Send()
 
 	proxyReq, err := buildProxyRequest(ctx.Request, functionAddr, proxyURI)
 	if err != nil {
-		log.Err(err).Send()
+		gate.log.Err(err).Send()
 		httputil.BadRequestWithJSON(ctx, httputil.Response{
 			Code:    httputil.ProxyBadRequest,
 			Message: fmt.Sprintf("获取目标函数 '%s' 地址失败", functionName),
@@ -116,10 +111,13 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin provider.Pr
 		defer proxyReq.Body.Close()
 	}
 
+	proxyClient := proxyClientPool.Get().(*http.Client)
+	defer proxyClientPool.Put(proxyClient)
+
 	start := time.Now()
-	response, err := proxyClient.Do(proxyReq.WithContext(ctx))
+	response, err := proxyClient.Transport.RoundTrip(proxyReq.WithContext(ctx))
 	seconds := time.Since(start)
-	log.Err(err).Msgf("请求上游函数 '%s' 失败", functionName)
+	gate.log.Err(err).Msgf("请求上游函数 '%s' 失败", functionName)
 	if err, ok := err.(*url.Error); ok && err.Timeout() {
 		httputil.TimeoutWithJSON(ctx, httputil.Response{
 			Code:    httputil.ProxyTimeout,
@@ -134,7 +132,7 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin provider.Pr
 		return
 	}
 	defer response.Body.Close()
-	log.Printf("请求函数 '%s' 共使用%f秒\n", functionName, seconds.Seconds())
+	gate.log.Printf("请求函数 '%s' 共使用%f秒\n", functionName, seconds.Seconds())
 	data, _ := io.ReadAll(response.Body)
 
 	clientHeader := ctx.Writer.Header()
@@ -145,11 +143,11 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin provider.Pr
 		Message: "",
 	}
 	responseContentType := response.Header.Get("Content-Type")
-	log.Debug().Str("content-type", responseContentType).Str("data", string(data)).Msg("检查回复Content-Type")
+	gate.log.Debug().Str("content-type", responseContentType).Str("data", string(data)).Msg("检查回复Content-Type")
 	if strings.Contains(responseContentType, "json") {
 		var tmpData interface{}
 		if err := json.NewDecoder(bytes.NewBuffer(data)).Decode(&tmpData); err != nil {
-			log.Err(err).Msgf("解析函数 '%s' 失败", functionName)
+			gate.log.Err(err).Msgf("解析函数 '%s' 失败", functionName)
 			httputil.BadRequestWithJSON(ctx, httputil.Response{
 				Code:    httputil.ProxyInternalServerError,
 				Message: "解析函数返回数据错误",
@@ -165,7 +163,7 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin provider.Pr
 
 	var buffer bytes.Buffer
 	if err := json.NewEncoder(&buffer).Encode(reply); err != nil {
-		log.Err(err).Msg("编码失败")
+		gate.log.Err(err).Msg("编码失败")
 		httputil.BadRequestWithJSON(ctx, httputil.Response{
 			Code:    httputil.ProxyInternalServerError,
 			Message: "编码函数返回数据失败",
@@ -175,7 +173,7 @@ func ProxyRequest(ctx *gin.Context, proxyClient *http.Client, plugin provider.Pr
 	ctx.Writer.WriteHeader(response.StatusCode)
 	ctx.Writer.Header().Set("Content-Length", fmt.Sprintf("%d", len(buffer.Bytes())))
 	if _, err := ctx.Writer.Write(buffer.Bytes()); err != nil {
-		log.Err(err).Send()
+		gate.log.Err(err).Send()
 	}
 }
 

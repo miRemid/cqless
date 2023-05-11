@@ -9,8 +9,10 @@ import (
 	"sync"
 
 	"github.com/miRemid/cqless/pkg/httputil"
+	"github.com/miRemid/cqless/pkg/logger"
 	"github.com/miRemid/cqless/pkg/types"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -35,6 +37,8 @@ type CQHTTPManager struct {
 	messageChan chan *CQHTTPMessage
 	quickReply  chan *CQHTTPMessage
 	httpClient  *http.Client
+
+	log zerolog.Logger
 }
 
 func NewCQHTTPManager(config *types.CQLessConfig) *CQHTTPManager {
@@ -45,10 +49,11 @@ func NewCQHTTPManager(config *types.CQLessConfig) *CQHTTPManager {
 		quickReply:  make(chan *CQHTTPMessage),
 		mutex:       sync.RWMutex{},
 		httpClient:  &http.Client{},
+		log:         log.Hook(logger.ModuleHook("cqhttp")),
 	}
-	log.Info().Msg("启动消息缓存队列")
+	m.log.Info().Msg("启动消息缓存队列")
 	go m.processMessageQueue()
-	log.Info().Msg("启动快速回复队列")
+	m.log.Info().Msg("启动快速回复队列")
 	go m.processQuickReployQueue()
 	return m
 }

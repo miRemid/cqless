@@ -6,12 +6,18 @@ import (
 
 	"github.com/buger/jsonparser"
 	"github.com/gorilla/websocket"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
 type CQHTTPWebsocket struct {
 	id   uint
 	conn *websocket.Conn
+
+	log zerolog.Logger
+}
+
+func (c CQHTTPWebsocket) Run(e *zerolog.Event, level zerolog.Level, message string) {
+	e.Uint("bot_id", c.id)
 }
 
 func (c *CQHTTPWebsocket) Close() error {
@@ -28,7 +34,7 @@ func (c *CQHTTPWebsocket) Listen(ch chan *CQHTTPMessage) error {
 		if err != nil {
 			return err
 		}
-		log.Debug().Msg(string(message))
+		c.log.Debug().Msg(string(message))
 		postType, _ := jsonparser.GetString(message, "post_type")
 		// TODO: 后续添加其他PostType支持，目前仅支持Message
 		if postType != "message" {

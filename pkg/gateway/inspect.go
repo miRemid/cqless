@@ -5,7 +5,6 @@ import (
 	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/httputil"
 	"github.com/miRemid/cqless/pkg/types"
-	"github.com/rs/zerolog/log"
 )
 
 func (gate *Gateway) MakeInspectHandler(cni *cninetwork.CNIManager) gin.HandlerFunc {
@@ -17,13 +16,13 @@ func (gate *Gateway) MakeInspectHandler(cni *cninetwork.CNIManager) gin.HandlerF
 		// check params
 		var req types.FunctionInspectRequest
 		if err := ctx.Bind(&req); err != nil {
-			log.Err(err).Send()
+			gate.log.Err(err).Send()
 			httputil.BadRequest(ctx)
 			return
 		}
 		fns, err := gate.provider.Inspect(ctx, req, cni)
 		if err != nil {
-			log.Err(err).Msgf("获取函数 '%s' 信息失败", req.FunctionName)
+			gate.log.Err(err).Msgf("获取函数 '%s' 信息失败", req.FunctionName)
 			httputil.OKWithJSON(ctx, httputil.Response{
 				Code:    httputil.StatusBadRequest,
 				Message: err.Error(),

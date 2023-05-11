@@ -9,7 +9,6 @@ import (
 	"github.com/miRemid/cqless/pkg/httputil"
 	"github.com/miRemid/cqless/pkg/types"
 	"github.com/miRemid/cqless/pkg/utils"
-	"github.com/rs/zerolog/log"
 )
 
 func (gate *Gateway) MakeRemoveHandler(cni *cninetwork.CNIManager) gin.HandlerFunc {
@@ -21,13 +20,13 @@ func (gate *Gateway) MakeRemoveHandler(cni *cninetwork.CNIManager) gin.HandlerFu
 
 		req := types.FunctionRemoveRequest{}
 		if err := ctx.BindJSON(&req); err != nil {
-			log.Err(err).Msg(httputil.ErrBadRequestParams)
+			gate.log.Err(err).Msg(httputil.ErrBadRequestParams)
 			httputil.BadRequest(ctx)
 			return
 		}
 		namespace := utils.GetNamespaceFromRequest(ctx.Request)
 		if valid, err := gate.provider.ValidNamespace(namespace); err != nil || !valid {
-			evt := log.Error()
+			evt := gate.log.Error()
 			if err != nil {
 				evt.Err(err)
 			}
@@ -36,7 +35,7 @@ func (gate *Gateway) MakeRemoveHandler(cni *cninetwork.CNIManager) gin.HandlerFu
 			return
 		}
 		if err := gate.provider.Remove(context.Background(), req, cni); err != nil {
-			log.Err(err).Send()
+			gate.log.Err(err).Send()
 			httputil.OKWithJSON(ctx, httputil.Response{
 				Code: httputil.StatusBadRequest,
 			})

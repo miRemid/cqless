@@ -54,7 +54,11 @@ func initConfig() {
 		SubNet:          "10.72.0.0/16",
 	})
 	viper.SetDefault("logger", LoggerConfig{
-		SavePath: path.Join(DEFAULT_CONFIG_PATH, defaultLogPath),
+		SavePath:       path.Join(DEFAULT_CONFIG_PATH, defaultLogPath),
+		EnableSaveFile: true,
+		MaxBackups:     5,
+		MaxSize:        500,
+		MaxAge:         7,
 	})
 	viper.SetDefault("proxy", ProxyConfig{
 		Timeout:             10 * time.Second,
@@ -93,7 +97,7 @@ func initConfig() {
 		panic(err)
 	}
 	config = cfg
-	d, ok := os.LookupEnv("DEBUG_MODE")
+	d, ok := os.LookupEnv("DEBUG")
 	if ok {
 		DEBUG = strings.ToUpper(d)
 	} else {
@@ -134,7 +138,12 @@ type NetworkConfig struct {
 }
 
 type LoggerConfig struct {
-	SavePath string `yaml:"save_path" mapstructure:"save_path"`
+	EnableSaveFile bool   `yaml:"enable_save_file" mapstructure:"enable_save_file"`
+	SavePath       string `yaml:"save_path" mapstructure:"save_path"`
+
+	MaxBackups int `yaml:"max_backups" mapstructure:"max_backups"`
+	MaxSize    int `yaml:"max_size" mapstructure:"max_size"`
+	MaxAge     int `yaml:"max_age" mapstructure:"max_age"`
 }
 
 type ProxyConfig struct {

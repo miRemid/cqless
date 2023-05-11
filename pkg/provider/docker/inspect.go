@@ -5,7 +5,6 @@ import (
 
 	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/types"
-	"github.com/rs/zerolog/log"
 )
 
 func (p *DockerProvider) Inspect(ctx context.Context, req types.FunctionInspectRequest, cni *cninetwork.CNIManager) ([]*types.Function, error) {

@@ -111,11 +111,13 @@ func getProxyServer(ctx context.Context) *http.Server {
 }
 
 func runGateway(cmd *cobra.Command, args []string) {
-	logger.InitLogger(config)
-	if err := gateway.Init(config); err != nil {
+	logger.InitLogger(config.Logger)
+
+	if err := cninetwork.Init(config); err != nil {
 		panic(err)
 	}
-	if err := cninetwork.Init(config); err != nil {
+
+	if err := gateway.Init(config); err != nil {
 		panic(err)
 	}
 

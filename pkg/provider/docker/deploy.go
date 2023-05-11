@@ -8,7 +8,6 @@ import (
 
 	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/types"
-	"github.com/rs/zerolog/log"
 
 	dtypes "github.com/docker/docker/api/types" // docker types
 	"github.com/docker/docker/api/types/container"
