@@ -1,7 +1,9 @@
 package types
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 )
@@ -26,6 +28,13 @@ func NewNode(scheme, host, funcName string, metadata any) *Node {
 
 func (n Node) String() string {
 	return n.URL().String()
+}
+
+func (n Node) Bytes() []byte {
+	var buffer bytes.Buffer
+	encode := json.NewEncoder(&buffer)
+	encode.Encode(&n)
+	return buffer.Bytes()
 }
 
 func (n Node) URL() *url.URL {

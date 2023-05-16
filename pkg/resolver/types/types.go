@@ -1,6 +1,9 @@
 package types
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 var (
 	ErrFuncNotFound = errors.New("func not found")
@@ -11,6 +14,7 @@ const (
 	SELECTOR_RANDOM = "RANDOM"
 
 	STORAGE_LOCAL = "LOCAL"
+	STORAGE_ETCD  = "ETCD"
 )
 
 type SelectorOption struct {
@@ -20,7 +24,8 @@ type SelectorOption struct {
 type StorageOption struct {
 	Strategy string `yaml:"strategy" mapstructure:"strategy"`
 
-	RpcEndpoint string `yaml:"endpoint" mapstructure:"endpoint"`
+	RpcEndpoints []string      `yaml:"endpoints" mapstructure:"endpoints"`
+	DialTimeout  time.Duration `yaml:"dial_timeout" mapstructure:"dial_timeout"`
 
 	DBPath string `yaml:"db_path" mapstructure:"db_path"`
 }

@@ -99,8 +99,10 @@ func initConfig() {
 	})
 	viper.SetDefault("resolver", rtypes.ResolverOption{
 		StorageOption: &rtypes.StorageOption{
-			Strategy: rtypes.STORAGE_LOCAL,
-			DBPath:   DEFAULT_CONFIG_PATH,
+			Strategy:     rtypes.STORAGE_LOCAL,
+			DBPath:       DEFAULT_CONFIG_PATH,
+			RpcEndpoints: []string{"127.0.0.1:2379"},
+			DialTimeout:  2 * time.Second,
 		},
 		SelectorOption: &rtypes.SelectorOption{
 			Strategy: rtypes.SELECTOR_RANDOM,
