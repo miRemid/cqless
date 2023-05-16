@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 )
@@ -18,6 +19,7 @@ func main() {
 		defer r.Body.Close()
 		param := r.URL.Query()["param"]
 		returnMessage := strings.Join(param, " ")
+		fmt.Println(returnMessage)
 		w.WriteHeader(200)
 		w.Write([]byte(returnMessage))
 	})
@@ -26,6 +28,7 @@ func main() {
 		defer r.Body.Close()
 		param := r.URL.Query()["param"]
 		returnMessage := strings.Join(param, " ")
+		fmt.Println(returnMessage)
 		w.WriteHeader(200)
 		w.Write([]byte(returnMessage))
 	})

@@ -7,12 +7,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/httputil"
+	"github.com/miRemid/cqless/pkg/provider"
+	"github.com/miRemid/cqless/pkg/resolver"
 	"github.com/miRemid/cqless/pkg/types"
-	"github.com/miRemid/cqless/pkg/utils"
 )
 
 func (gate *Gateway) MakeDeployHandler(cni *cninetwork.CNIManager, secretMountPath string, alwaysPull bool) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		evt := gate.log.With().Str("action", "deploy").Logger()
 		if ctx.Request.Body == nil {
 			return
 		}
@@ -21,13 +23,13 @@ func (gate *Gateway) MakeDeployHandler(cni *cninetwork.CNIManager, secretMountPa
 		body, _ := io.ReadAll(ctx.Request.Body)
 		req := types.FunctionCreateRequest{}
 		if err := json.Unmarshal(body, &req); err != nil {
-			gate.log.Err(err).Msg(httputil.ErrBadRequestParams)
+			evt.Err(err).Msg(httputil.ErrBadRequestParams)
 			httputil.BadRequest(ctx)
 			return
 		}
-		namespace := utils.GetRequestNamespace(req.Namespace)
-		if valid, err := gate.provider.ValidNamespace(namespace); err != nil || !valid {
-			evt := gate.log.Error()
+		namespace := GetRequestNamespace(req.Namespace)
+		if valid, err := provider.ValidNamespace(namespace); err != nil || !valid {
+			evt := evt.Error()
 			if err != nil {
 				evt.Err(err)
 			}
@@ -37,15 +39,23 @@ func (gate *Gateway) MakeDeployHandler(cni *cninetwork.CNIManager, secretMountPa
 		}
 		namespaceSecretMountPath := getNamespaceSecretMountPath(secretMountPath, namespace)
 		if err := validateSecrets(namespaceSecretMountPath, req.Secrets); err != nil {
-			gate.log.Err(err).Msg("校验secretsMountPath失败")
+			evt.Err(err).Msg("校验secretsMountPath失败")
 			httputil.BadRequest(ctx)
 			return
 		}
-		fn, err := gate.provider.Deploy(ctx, req, cni)
+		fn, err := provider.Deploy(ctx, req, cni)
 		if err != nil {
-			gate.log.Err(err).Msgf("创建函数 '%s' 失败", req.Name)
+			evt.Err(err).Msgf("创建函数 '%s' 失败", req.Name)
 			httputil.OKWithJSON(ctx, httputil.Response{
-				Code:    httputil.StatusBadRequest,
+				Code:    httputil.StatusInternalServerError,
+				Message: err.Error(),
+			})
+			return
+		}
+		if err := resolver.Register(ctx, fn.Name, fn.Node()); err != nil {
+			gate.log.Err(err).Msgf("DNS插入失败")
+			httputil.OKWithJSON(ctx, httputil.Response{
+				Code:    httputil.StatusInternalServerError,
 				Message: err.Error(),
 			})
 			return

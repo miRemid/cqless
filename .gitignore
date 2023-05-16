@@ -32,3 +32,8 @@ tempdata
 hosts
 message.json
 build
+
+# idea
+.idea
+
+db

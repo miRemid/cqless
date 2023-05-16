@@ -27,6 +27,7 @@ var inspectCmd = &cobra.Command{
 
 func init() {
 	inspectCmd.Flags().StringVar(&functionName, "fn", "", "需要检查的函数名称")
+	inspectCmd.PersistentFlags().IntVarP(&httpClientGatewayPort, "port", "p", 5566, "调用端口，默认5566")
 }
 
 func inspect(cmd *cobra.Command, args []string) {

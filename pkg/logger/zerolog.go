@@ -6,7 +6,8 @@ import (
 	"path"
 	"time"
 
-	"github.com/miRemid/cqless/pkg/types"
+	"github.com/miRemid/cqless/pkg/logger/types"
+	dtypes "github.com/miRemid/cqless/pkg/types"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -28,9 +29,8 @@ TODO: Zerolog的初始化工作，包括但不限于
 // 		Logger()
 // }
 
-func InitLogger(config *types.LoggerConfig) {
-	if types.DEBUG == "TRUE" {
-		log.Debug().Msg("running in debug mode")
+func InitLogger(config *types.LoggerOption, fileName string) {
+	if dtypes.DEBUG == "TRUE" {
 		log.Logger = zerolog.New(
 			zerolog.ConsoleWriter{
 				Out: os.Stdout, TimeFormat: time.RubyDate}).
@@ -40,13 +40,14 @@ func InitLogger(config *types.LoggerConfig) {
 			Caller().
 			Int("pid", os.Getpid()).
 			Logger()
+		log.Debug().Msg("running in debug mode")
 	} else {
 		var writers []io.Writer
 		writers = append(writers, zerolog.ConsoleWriter{
 			Out: os.Stdout, TimeFormat: time.RubyDate})
 		if config.EnableSaveFile {
 			writers = append(writers, &lumberjack.Logger{
-				Filename:   path.Join(config.SavePath, "cqless.log"),
+				Filename:   path.Join(config.SavePath, fileName),
 				MaxBackups: config.MaxBackups,
 				MaxSize:    config.MaxSize,
 				MaxAge:     config.MaxAge,

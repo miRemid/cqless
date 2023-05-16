@@ -16,6 +16,10 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+func WebsocketHandler() gin.HandlerFunc {
+	return defaultCQHTTPManager.WebsocketHandler
+}
+
 func (c *CQHTTPManager) WebsocketHandler(ctx *gin.Context) {
 	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {

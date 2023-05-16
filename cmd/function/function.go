@@ -22,6 +22,7 @@ var (
 	httpClient               *http.Client
 	httpClientGatewayAddress string
 	httpClientGatewayPort    int
+	httpClientProxyPort      int
 	httpTimeout              int
 )
 
@@ -35,7 +36,6 @@ func Init(functionCmd *cobra.Command) {
 
 	functionCmd.PersistentFlags().IntVarP(&httpTimeout, "timeout", "", 30, "执行超时时间，默认30s")
 	functionCmd.PersistentFlags().StringVarP(&httpClientGatewayAddress, "gateway", "g", "127.0.0.1", "网关地址，默认127.0.0.1")
-	functionCmd.PersistentFlags().IntVarP(&httpClientGatewayPort, "port", "p", 8888, "调用端口，默认8888")
 	functionCmd.PersistentFlags().StringVar(&functionNamespace, "namespace", types.DEFAULT_FUNCTION_NAMESPACE, "函数所在命名空间(Docker无需关心)")
 	functionCmd.PersistentFlags().StringVarP(&functionConfigPath, "config", "c", "", "函数部署配置文件路径，默认为空")
 	functionCmd.PersistentFlags().StringVar(&cqless_function_api_version, "version", "v1", "API版本，默认v1")

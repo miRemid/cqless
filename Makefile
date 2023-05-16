@@ -29,6 +29,7 @@ build-vendor:
 
 clean: ## Remove build related file
 	rm -fr ./build
+	rm -rf ${HOME}/.local/share/cqless
 
 vendor: ## Copy of all packages needed to support builds and tests in the vendor directory
 	$(GOCMD) mod vendor

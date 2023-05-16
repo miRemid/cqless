@@ -80,12 +80,12 @@ func (p *DockerProvider) pull(ctx context.Context, req types.FunctionCreateReque
 }
 
 func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateRequest, cni *cninetwork.CNIManager) (*types.Function, error) {
-	log.Printf("start to pull %s\n", req.Image)
+	p.log.Printf("start to pull %s\n", req.Image)
 	err := p.pull(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("start to deploy function: %s\n", req.Name)
+	p.log.Printf("start to deploy function: %s\n", req.Name)
 	labels, err := req.BuildLabels()
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateReq
 	if req.Limits != nil && len(req.Limits.Memory) > 0 {
 		qty, err := resource.ParseQuantity(req.Limits.Memory)
 		if err != nil {
-			log.Printf("error parsing (%q) as quantity: %s", req.Limits.Memory, err.Error())
+			p.log.Printf("error parsing (%q) as quantity: %s", req.Limits.Memory, err.Error())
 		}
 		containerResources.Memory = qty.Value()
 	}
@@ -130,11 +130,11 @@ func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateReq
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("create function container, id: %s\n", resp.ID)
+	p.log.Printf("create function container, id: %s\n", resp.ID)
 	if err := p.cli.ContainerStart(ctx, resp.ID, dtypes.ContainerStartOptions{}); err != nil {
 		return nil, err
 	}
-	log.Printf("start function container, id: %s\n", resp.ID)
+	p.log.Printf("start function container, id: %s\n", resp.ID)
 	info, err := p.cli.ContainerInspect(ctx, resp.ID)
 	if err != nil {
 		return nil, err
@@ -149,5 +149,6 @@ func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateReq
 		return nil, err
 	}
 	fn.IPAddress = ip
+	fn.Scheme = req.Scheme
 	return fn, nil
 }

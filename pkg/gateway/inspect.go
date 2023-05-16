@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/httputil"
+	"github.com/miRemid/cqless/pkg/provider"
 	"github.com/miRemid/cqless/pkg/types"
 )
 
@@ -20,11 +21,11 @@ func (gate *Gateway) MakeInspectHandler(cni *cninetwork.CNIManager) gin.HandlerF
 			httputil.BadRequest(ctx)
 			return
 		}
-		fns, err := gate.provider.Inspect(ctx, req, cni)
+		fns, err := provider.Inspect(ctx, req, cni)
 		if err != nil {
 			gate.log.Err(err).Msgf("获取函数 '%s' 信息失败", req.FunctionName)
 			httputil.OKWithJSON(ctx, httputil.Response{
-				Code:    httputil.StatusBadRequest,
+				Code:    httputil.StatusInternalServerError,
 				Message: err.Error(),
 			})
 			return

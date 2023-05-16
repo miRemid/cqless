@@ -1,5 +1,6 @@
 {
     "name": "helloworld",
-    "image": "kamir3mid/helloworld-func",
-    "port": "8080"
+    "image": "kamir3mid/helloworld-func:latest",
+    "port": "8080",
+    "scheme": "http"
 }
