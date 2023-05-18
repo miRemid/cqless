@@ -8,6 +8,7 @@ VERSION?=0.0.0
 SERVICE_PORT?=3000
 DOCKER_REGISTRY?=kamir3mid/ #if set it should finished by /
 EXPORT_RESULT?=false # for CI please set EXPORT_RESULT to true
+API_VERSION := v1
 
 GREEN  := $(shell tput -Txterm setaf 2)
 YELLOW := $(shell tput -Txterm setaf 3)
@@ -15,7 +16,14 @@ WHITE  := $(shell tput -Txterm setaf 7)
 CYAN   := $(shell tput -Txterm setaf 6)
 RESET  := $(shell tput -Txterm sgr0)
 
-.PHONY: all test build vendor
+GEN_DIR := pkg/$(API_VERSION)
+PROTO_FILES := $(wildcard pb/$(API_VERSION)/*.proto)
+define exec-command
+$(1)
+
+endef
+
+.PHONY: all test build vendor gen
 
 all: help
 
@@ -99,3 +107,10 @@ help: ## Show this help.
 		if (/^[a-zA-Z_-]+:.*?##.*$$/) {printf "    ${YELLOW}%-20s${GREEN}%s${RESET}\n", $$1, $$2} \
 		else if (/^## .*$$/) {printf "  ${CYAN}%s${RESET}\n", substr($$1,4)} \
 		}' $(MAKEFILE_LIST)
+
+.PHONY: gen
+gen:
+	rm -rf ./$(GEN_DIR)/pb	
+	mkdir -p ./$(GEN_DIR)/pb
+	$(foreach file,$(PROTO_FILES),$(call exec-command, protoc --go_out ./$(GEN_DIR) --go-grpc_out ./$(GEN_DIR) $(file)))
+	$(foreach file,$(PROTO_FILES),$(call exec-command, protoc --grpc-gateway_out ./$(GEN_DIR) --grpc-gateway_opt logtostderr=true $(file)))

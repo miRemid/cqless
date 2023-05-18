@@ -22,8 +22,8 @@ cqless
 go.work
 
 # wait for finish the module
+docker-tobedone
 builder
-docker
 scripts
 
 # test directory

@@ -18,31 +18,34 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
 
-	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
-	"github.com/miRemid/cqless/pkg/cninetwork"
-	"github.com/miRemid/cqless/pkg/cqhttp"
-	"github.com/miRemid/cqless/pkg/gateway"
-	"github.com/miRemid/cqless/pkg/logger"
-	"github.com/miRemid/cqless/pkg/middleware"
-	"github.com/miRemid/cqless/pkg/provider"
-	"github.com/miRemid/cqless/pkg/proxy"
-	"github.com/miRemid/cqless/pkg/resolver"
-	"github.com/miRemid/cqless/pkg/types"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/miRemid/cqless/pkg/v1/cninetwork"
+	"github.com/miRemid/cqless/pkg/v1/cqhttp"
+	"github.com/miRemid/cqless/pkg/v1/gateway"
+	"github.com/miRemid/cqless/pkg/v1/logger"
+	"github.com/miRemid/cqless/pkg/v1/middleware"
+	v1 "github.com/miRemid/cqless/pkg/v1/pb"
+	"github.com/miRemid/cqless/pkg/v1/provider"
+	"github.com/miRemid/cqless/pkg/v1/proxy"
+	"github.com/miRemid/cqless/pkg/v1/resolver"
+	"github.com/miRemid/cqless/pkg/v1/types"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "cqless",
 	Short: "=w=",
-	Long:  `CQLESS命令行版`,
 }
 
 var config *types.CQLessConfig
@@ -58,12 +61,20 @@ func init() {
 		Short: "generate config files",
 		Run:   runInitConfig,
 	})
-
+	rootCmd.AddCommand(&cobra.Command{
+		Use:   "version",
+		Short: "get current version",
+		Run:   runGetVersion,
+	})
 }
 
 func runInitConfig(cmd *cobra.Command, args []string) {
 	types.GetConfig()
-	fmt.Printf("已生成配置文件至：%s\n", types.DEFAULT_CONFIG_PATH)
+	fmt.Printf("generate config files：%s\n", types.DEFAULT_CONFIG_PATH)
+}
+
+func runGetVersion(cmd *cobra.Command, args []string) {
+	fmt.Printf("version：%s\n", types.CQLESS_VERSION)
 }
 
 func Execute() {
@@ -73,36 +84,35 @@ func Execute() {
 	}
 }
 
-func setupApiServer(ctx context.Context) *http.Server {
-	route := gin.New()
-	route.Use(gin.Recovery())
-	route.Use(middleware.Logger("api"))
-	if types.GetConfig().Gateway.EnablePprof {
-		log.Info().Msg("开启pprof性能分析")
-		pprof.Register(route)
+func setupApiServer(ctx context.Context) (*http.Server, net.Listener, *grpc.Server) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	gw := gateway.New()
+	if err := gw.Init(config.Gateway); err != nil {
+		panic(err)
 	}
-	v1 := route.Group("/api/v1")
-	{
-		cqless := v1.Group("/cqless")
-		{
-			cqless.POST("/function", gateway.MakeDeployHandler("", false))
-			cqless.DELETE("/function", gateway.MakeRemoveHandler())
-			cqless.GET("/function", gateway.MakeInspectHandler())
-		}
-
-		cq := v1.Group("/cqhttp")
-		{
-			cq.Match([]string{http.MethodGet, http.MethodPost}, "", cqhttp.WebsocketHandler())
-		}
+	mux := runtime.NewServeMux()
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
+	lis, err := net.Listen("tcp", config.Gateway.Address)
+	if err != nil {
+		panic(err)
+	}
+	grpcServer := grpc.NewServer()
+	v1.RegisterFunctionServiceServer(grpcServer, gw)
+	if err := v1.RegisterFunctionServiceHandlerFromEndpoint(ctx, mux, config.Gateway.Address, opts); err != nil {
+		panic(err)
+	}
+	mux.HandlePath("POST", "/cqhttp", cqhttp.WebsocketHandler())
 	server := &http.Server{
-		Addr:           fmt.Sprintf(":%d", config.Gateway.Port),
-		Handler:        route,
+		Addr:           config.Gateway.HTTPAddress,
+		Handler:        mux,
 		ReadTimeout:    config.Gateway.ReadTimeout,
 		WriteTimeout:   config.Gateway.WriteTimeout,
 		MaxHeaderBytes: http.DefaultMaxHeaderBytes,
 	}
-	return server
+	return server, lis, grpcServer
 }
 
 func setupProxyServer(ctx context.Context) *http.Server {
@@ -117,7 +127,7 @@ func setupProxyServer(ctx context.Context) *http.Server {
 	v1.Any("/:funcName/*requestPath", proxy.ReverseHandler())
 
 	server := &http.Server{
-		Addr:           fmt.Sprintf(":%d", config.Proxy.Port),
+		Addr:           config.Proxy.Address,
 		Handler:        route,
 		ReadTimeout:    config.Gateway.ReadTimeout,
 		WriteTimeout:   config.Gateway.WriteTimeout,
@@ -136,10 +146,6 @@ func runUP(cmd *cobra.Command, args []string) {
 	}
 
 	if err := resolver.Init(config.Resolver); err != nil {
-		panic(err)
-	}
-
-	if err := gateway.Init(config.Gateway); err != nil {
 		panic(err)
 	}
 
@@ -162,20 +168,27 @@ func runUP(cmd *cobra.Command, args []string) {
 	ctx := context.Background()
 	ctx, done := signal.NotifyContext(ctx, os.Interrupt, os.Kill)
 
-	apiServer := setupApiServer(ctx)
+	apiServer, lis, grpcServer := setupApiServer(ctx)
 	proxyServer := setupProxyServer(ctx)
+	systemLogger.Info().Str("address", config.Gateway.HTTPAddress).Msg("start HTTP API server")
 	go apiServer.ListenAndServe()
+	systemLogger.Info().Str("address", config.Gateway.Address).Msg("start GRPC API server")
+	go grpcServer.Serve(lis)
+	systemLogger.Info().Str("address", config.Proxy.Address).Msg("start HTTP Proxy server")
 	go proxyServer.ListenAndServe()
 	<-ctx.Done()
 	done()
 
-	systemLogger.Info().Msg("监听到退出信号")
+	systemLogger.Info().Msg("detect close signal")
 	apictx, cancelApi := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelApi()
-	log.Info().Msg("正在关闭API服务")
+	systemLogger.Info().Msg("Closing HTTP API server...")
 	apiServer.Shutdown(apictx)
+	systemLogger.Info().Msg("Closing GRPC API server...")
+	grpcServer.GracefulStop()
+
 	proxyctx, cancelProxy := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelProxy()
-	log.Info().Msg("正在关闭Proxy服务")
+	systemLogger.Info().Msg("Closing Proxy server...")
 	proxyServer.Shutdown(proxyctx)
 }

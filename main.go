@@ -16,7 +16,7 @@ limitations under the License.
 package main
 
 import (
-	"github.com/miRemid/cqless/cmd"
+	"github.com/miRemid/cqless/cmd/v1"
 )
 
 func main() {
