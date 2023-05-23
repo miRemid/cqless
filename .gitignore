@@ -20,6 +20,7 @@ cqless
 
 # Go workspace file
 go.work
+go.work.sum
 
 # wait for finish the module
 docker-tobedone

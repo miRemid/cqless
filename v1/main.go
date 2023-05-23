@@ -16,11 +16,9 @@ limitations under the License.
 package main
 
 import (
-	"github.com/miRemid/cqless/cmd"
+	"github.com/miRemid/cqless/v1/cmd"
 )
 
 func main() {
-	// logger.InitLogger(types.GetConfig().Logger)
-
 	cmd.Execute()
 }

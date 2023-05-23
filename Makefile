@@ -1,3 +1,5 @@
+API_VERSION := v1
+
 GOCMD=go
 GOTEST=$(GOCMD) test
 GOVET=$(GOCMD) vet
@@ -8,7 +10,6 @@ VERSION?=0.0.0
 SERVICE_PORT?=3000
 DOCKER_REGISTRY?=kamir3mid/ #if set it should finished by /
 EXPORT_RESULT?=false # for CI please set EXPORT_RESULT to true
-API_VERSION := v1
 
 GREEN  := $(shell tput -Txterm setaf 2)
 YELLOW := $(shell tput -Txterm setaf 3)
@@ -16,8 +17,8 @@ WHITE  := $(shell tput -Txterm setaf 7)
 CYAN   := $(shell tput -Txterm setaf 6)
 RESET  := $(shell tput -Txterm sgr0)
 
-GEN_DIR := pkg/$(API_VERSION)
-PROTO_FILES := $(wildcard pb/$(API_VERSION)/*.proto)
+GEN_DIR := $(API_VERSION)/pkg
+PROTO_FILES := $(wildcard $(API_VERSION)/pb/*.proto)
 define exec-command
 $(1)
 
@@ -28,12 +29,15 @@ endef
 all: help
 
 ## Build:
+build-test:
+	mkdir -p build/bin
+	$(GOCMD) build -o build/bin/$(BINARY_NAME) $(API_VERSION)/*.go
 build: ## Build your project and put the output binary in out/bin/
 	mkdir -p build/bin
-	CGO_ENABLED=$(USE_CGO) $(GOCMD) build -a -ldflags '-s' -o build/bin/$(BINARY_NAME) .
+	CGO_ENABLED=$(USE_CGO) $(GOCMD) build -a -ldflags '-s' -o build/bin/$(BINARY_NAME) $(API_VERSION)/*.go
 build-vendor:
 	mkdir -p build/bin
-	CGO_ENABLED=$(USE_CGO) $(GOCMD) build -a -ldflags '-s' -mod vendor -o build/bin/$(BINARY_NAME) .
+	CGO_ENABLED=$(USE_CGO) $(GOCMD) build -a -ldflags '-s' -mod vendor -o build/bin/$(BINARY_NAME) $(API_VERSION)/*.go
 
 clean: ## Remove build related file
 	rm -fr ./build
