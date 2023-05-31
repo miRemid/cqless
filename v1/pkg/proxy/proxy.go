@@ -1,7 +1,9 @@
 package proxy
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"io"
 	"net"
 	"net/http"
@@ -11,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -27,6 +30,11 @@ var defaultProxy = new(Proxy)
 type Proxy struct {
 	log        zerolog.Logger
 	clientPool *sync.Pool
+
+	nats_c     *nats.Conn
+	nats_s     *nats.Subscription
+	asyncQueue chan *AsyncRequest
+	asyncClose chan struct{}
 }
 
 func Init(opt *types.ProxyOption) error {
@@ -40,6 +48,30 @@ func (p *Proxy) Init(config *types.ProxyOption) error {
 			return NewProxyClientFromConfig(config)
 		},
 	}
+	if config.NatsAddress != "" {
+		c, err := nats.Connect(config.NatsAddress)
+		if err != nil {
+			return err
+		}
+		p.nats_c = c
+		p.nats_c.Subscribe(types.ASYNC_REQUEST, p.asyncSubNats)
+	} else {
+		p.asyncQueue = make(chan *AsyncRequest)
+		p.asyncClose = make(chan struct{}, 1)
+		go p.asyncSubChannel()
+	}
+	return nil
+}
+
+func Close() error {
+	return defaultProxy.Close()
+}
+
+func (p *Proxy) Close() error {
+	p.nats_c.Close()
+	p.asyncClose <- struct{}{}
+	close(p.asyncClose)
+	close(p.asyncQueue)
 	return nil
 }
 
@@ -58,6 +90,18 @@ func (p *Proxy) ReverseHandler() gin.HandlerFunc {
 			p.log.Error().Str("uri", ctx.Request.RequestURI).Msg("no found funcname in the request uri")
 			ctx.AbortWithStatus(http.StatusBadRequest)
 			return
+		}
+		async := false
+		callback := ""
+		if strings.HasSuffix(funcName, "_async") {
+			async = true
+			funcName = strings.TrimSuffix(funcName, "_async")
+			callback = ctx.Query("callback")
+			if callback == "" {
+				p.log.Error().Str("uri", ctx.Request.RequestURI).Msg("found no callback in the request uri")
+				ctx.AbortWithStatus(http.StatusBadRequest)
+				return
+			}
 		}
 		evt := p.log.With().Str("func", funcName).Logger()
 
@@ -97,39 +141,53 @@ func (p *Proxy) ReverseHandler() gin.HandlerFunc {
 		}
 
 		evt.Debug().Str("endpoint", upstreamReq.URL.String()).Msg("send proxy request")
-		// 发送请求
-		client := p.clientPool.Get().(*http.Client)
-		defer p.clientPool.Put(client)
-		upstreamRes, err := client.Do(upstreamReq)
-		if err != nil {
-			evt.Err(err).Str("remote_addr", upstreamReq.RemoteAddr).Msg("request proxy failed")
-			ctx.AbortWithStatus(http.StatusBadGateway)
-			return
-		}
-		defer upstreamRes.Body.Close()
-		// if upstreamRes.Body != nil {
-		// 	defer upstreamRes.Body.Close()
-		// }
+		if async {
+			// save proxy request to message queue
+			var asyncRequest = &AsyncRequest{
+				FuncName:   funcName,
+				Callback:   callback,
+				RawRequest: upstreamReq,
+			}
+			if p.asyncQueue == nil {
+				var buf bytes.Buffer
+				if err := gob.NewEncoder(&buf).Encode(asyncRequest); err != nil {
+					evt.Err(err).Msg("encode async request failed")
+					ctx.AbortWithStatus(http.StatusBadGateway)
+					return
+				}
+				if err := p.nats_c.Publish(types.ASYNC_REQUEST, buf.Bytes()); err != nil {
+					evt.Err(err).Msg("send async request to nats message queue failed")
+					ctx.AbortWithStatus(http.StatusBadGateway)
+					return
+				}
+			} else {
+				p.asyncQueue <- asyncRequest
+			}
+			ctx.Status(204)
+		} else {
+			// 发送请求
+			upstreamRes, err := p.send(upstreamReq)
+			if err != nil {
+				evt.Err(err).Str("remote_addr", upstreamReq.RemoteAddr).Msg("request proxy failed")
+				ctx.AbortWithStatus(http.StatusBadGateway)
+				return
+			}
+			defer upstreamRes.Body.Close()
 
-		// 返回请求
-		rawHeader := ctx.Writer.Header()
-		copyHeaders(rawHeader, &upstreamRes.Header)
-		ctx.Status(upstreamRes.StatusCode)
-		// if upstreamRes.Body != nil {
-		// 	n, err := io.Copy(ctx.Writer, upstreamReq.Body)
-		// 	if err != nil {
-		// 		evt.Err(err).Msg("rewrite proxy data failed!!!")
-		// 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, httputil.Response{
-		// 			Code:    httputil.StatusInternalServerError,
-		// 			Message: err.Error(),
-		// 		})
-		// 		return
-		// 	}
-		// 	evt.Debug().Int64("data-length", n).Msg("rewrite proxy data success")
-		// }
-		data, _ := io.ReadAll(upstreamRes.Body)
-		ctx.Writer.Write(data)
+			// 返回请求
+			rawHeader := ctx.Writer.Header()
+			copyHeaders(rawHeader, &upstreamRes.Header)
+			ctx.Status(upstreamRes.StatusCode)
+			data, _ := io.ReadAll(upstreamRes.Body)
+			ctx.Writer.Write(data)
+		}
 	}
+}
+
+func (p *Proxy) send(req *http.Request) (*http.Response, error) {
+	client := p.clientPool.Get().(*http.Client)
+	defer p.clientPool.Put(client)
+	return client.Do(req)
 }
 
 func (p *Proxy) GetRemoteNodeByName(ctx context.Context, funcName string) (*rtypes.Node, error) {

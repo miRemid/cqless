@@ -8,10 +8,10 @@ import (
 	"github.com/miRemid/cqless/v1/pkg/logger"
 	"github.com/miRemid/cqless/v1/pkg/pb"
 	"github.com/miRemid/cqless/v1/pkg/provider"
+	"github.com/miRemid/cqless/v1/pkg/resolver"
+	rtypes "github.com/miRemid/cqless/v1/pkg/resolver/types"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -34,16 +34,25 @@ type Gateway struct {
 
 func (gate *Gateway) Init(config *types.GatewayOption) error {
 	gate.log = log.Hook(logger.ModuleHook("gateway"))
-	// https://github.com/rfyiamcool/notes/blob/main/golang_net_http_optimize.md
 	return nil
 }
 
 func (g *Gateway) CreateFunction(ctx context.Context, req *pb.CreateFunctionRequest) (*pb.Function, error) {
-	return provider.Deploy(ctx, req, cninetwork.DefaultManager)
-}
-
-func (g *Gateway) UpdateFunction(context.Context, *pb.UpdateFunctionRequest) (*pb.Function, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateFunction not implemented")
+	function, err := provider.Deploy(ctx, req, cninetwork.DefaultManager)
+	if err != nil {
+		return nil, err
+	}
+	if err := resolver.Register(ctx, function.Name, rtypes.NewNode(
+		function.Scheme,
+		function.IpAddress+":"+function.WatchDogPort,
+		function.Name, function.Metadata,
+	)); err != nil {
+		defer provider.Remove(context.Background(), &pb.DeleteFunctionRequest{
+			Name: function.Name,
+		}, cninetwork.DefaultManager)
+		return nil, err
+	}
+	return function, nil
 }
 
 func (g *Gateway) ListFunctions(ctx context.Context, req *pb.ListFunctionsRequest) (*pb.ListFunctionsResponse, error) {

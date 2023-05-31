@@ -89,6 +89,9 @@ func (p *DockerProvider) Deploy(ctx context.Context, req *pb.CreateFunctionReque
 	}
 	p.log.Printf("start to deploy function: %s\n", function.Name)
 	labels := function.Labels
+	if labels == nil {
+		labels = make(map[string]string)
+	}
 	labels[types.DEFAULT_FUNCTION_NAME_LABEL] = function.Name // 添加一个 DEFAULT_FUNCTION_NAME_LABEL = FunctionName 用于后续查找
 	if function.WatchDogPort == "" {
 		function.WatchDogPort = types.DEFAULT_WATCHDOG_PORT
@@ -142,11 +145,6 @@ func (p *DockerProvider) Deploy(ctx context.Context, req *pb.CreateFunctionReque
 	if err != nil {
 		return nil, err
 	}
-	ip, err := cni.GetIPAddress(fn)
-	if err != nil {
-		return nil, err
-	}
-	fn.IpAddress = ip
 	fn.Scheme = function.Scheme
 	return fn, nil
 }

@@ -191,4 +191,7 @@ func runUP(cmd *cobra.Command, args []string) {
 	defer cancelProxy()
 	systemLogger.Info().Msg("Closing Proxy server...")
 	proxyServer.Shutdown(proxyctx)
+
+	proxy.Close()
+	provider.Close()
 }
