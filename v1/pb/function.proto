@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+package cqless.v1.function;
+option go_package = "/pb";
+
+import "google/api/annotations.proto";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+
+// Generated according to https://cloud.google.com/apis/design/standard_methods
+service FunctionService {
+  rpc ListFunctions(ListFunctionsRequest) returns (ListFunctionsResponse) {
+    option (google.api.http) = {
+      get: "/v1/functions"
+    };
+  }
+
+  rpc GetFunction(GetFunctionRequest) returns (ListFunctionsResponse) {
+    option (google.api.http) = {
+      get: "/v1/{name=functions/*}"
+    };
+  }
+
+  rpc CreateFunction(CreateFunctionRequest) returns (Function) {
+    option (google.api.http) = {
+      post: "/v1/functions"
+      body: "function"
+    };
+  }
+
+  rpc UpdateFunction(UpdateFunctionRequest) returns (Function) {
+    option (google.api.http) = {
+      patch: "/v1/{function.name=functions/*}"
+      body: "function"
+    };
+  }
+
+  rpc DeleteFunction(DeleteFunctionRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/{name=functions/*}"
+    };
+  }
+}
+
+message FunctionResources {
+  string memory = 1;
+  string cpu = 2;
+}
+
+message Function {
+  string id = 1;
+  int64 pid = 2;
+  string name = 3;
+  string fullName = 4;
+  string status = 5;
+  string image = 6;
+
+  string namespace = 7;
+  string ipAddress = 8;
+  string watchDogPort = 9;
+  string scheme = 10;
+
+  map<string, string> labels = 11;
+  map<string, string> envs = 12;
+  map<string, string> metadata = 13;
+  repeated string constraints = 14;
+  repeated string secrets = 15;
+  FunctionResources limits = 16;
+}
+
+message ListFunctionsRequest {
+  // The parent resource name, for example, "shelves/shelf1"
+  string parent = 1;
+
+  // The maximum number of items to return.
+  int32 page_size = 2;
+
+  // The next_page_token value returned from a previous List request, if any.
+  string page_token = 3;
+}
+
+message ListFunctionsResponse {
+  // The field name should match the noun "function" in the method name.
+  // There will be a maximum number of items returned based on the 
+  // page_size field in the request.
+  repeated Function functions = 1;
+
+  // Token to retrieve the next page of results, or empty if there are 
+  // no more results in the list.
+  string next_page_token = 2;
+}
+
+message GetFunctionRequest {
+  // The field will contain name of the resource requested.
+  string name = 1;
+}
+
+message CreateFunctionRequest {
+  // The parent resource name where the function is to be created.
+  string parent = 1;
+
+  // The function id to use for this function.
+  string function_id = 2;
+
+  // The function resource to create.
+  // The field name should match the Noun in the method name.
+  Function function = 3;
+}
+
+message UpdateFunctionRequest {
+  // The function resource which replaces the resource on the server.
+  Function function = 1;
+
+  // The update mask applies to the resource. For the `FieldMask` definition,
+  google.protobuf.FieldMask update_mask = 2;
+}
+
+message DeleteFunctionRequest {
+  // The resource name of the function to be deleted.
+  string name = 1;
+}

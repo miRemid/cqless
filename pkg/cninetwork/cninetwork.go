@@ -13,7 +13,8 @@ import (
 	"strings"
 
 	gocni "github.com/containerd/go-cni"
-	"github.com/miRemid/cqless/pkg/types"
+	"github.com/miRemid/cqless/pkg/cninetwork/types"
+	dtypes "github.com/miRemid/cqless/pkg/types"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -54,7 +55,7 @@ func init() {
 
 type CNIManager struct {
 	cli    gocni.CNI
-	config *types.NetworkConfig
+	config *types.NetworkOption
 }
 
 func (m *CNIManager) GenerateJSON() []byte {
@@ -68,8 +69,8 @@ func (m *CNIManager) GenerateJSON() []byte {
 
 // InitNetwork initialize the default cni network for all
 // function containers
-func (m *CNIManager) Init(config *types.CQLessConfig) error {
-	m.config = config.Network
+func (m *CNIManager) Init(config *types.NetworkOption) error {
+	m.config = config
 
 	if !dirExists(m.config.ConfigPath) {
 		if err := os.MkdirAll(m.config.ConfigPath, 0755); err != nil {
@@ -97,12 +98,12 @@ func (m *CNIManager) Init(config *types.CQLessConfig) error {
 }
 
 // InitNetwork initialize the default cni manager
-func Init(config *types.CQLessConfig) error {
+func Init(config *types.NetworkOption) error {
 	return DefaultManager.Init(config)
 }
 
 // DeleteCNINetwork deletes a CNI network based on container's id and pid
-func (m *CNIManager) DeleteCNINetwork(ctx context.Context, fn *types.Function) error {
+func (m *CNIManager) DeleteCNINetwork(ctx context.Context, fn *dtypes.Function) error {
 	log.Printf("[Delete] removing CNI network for: %s\n", fn.ID)
 
 	id := m.NetID(fn.ID, fn.PID)
@@ -116,12 +117,12 @@ func (m *CNIManager) DeleteCNINetwork(ctx context.Context, fn *types.Function) e
 	return nil
 }
 
-func DeleteCNINetwork(ctx context.Context, fn *types.Function) error {
+func DeleteCNINetwork(ctx context.Context, fn *dtypes.Function) error {
 	return DefaultManager.DeleteCNINetwork(ctx, fn)
 }
 
 // CreateCNINetwork creates a CNI network interface and attaches it to the context
-func (m *CNIManager) CreateCNINetwork(ctx context.Context, fn *types.Function) (*gocni.Result, error) {
+func (m *CNIManager) CreateCNINetwork(ctx context.Context, fn *dtypes.Function) (*gocni.Result, error) {
 	log.Info().Msgf("start to create cninetwork for function: %s", fn.Name)
 	id := m.NetID(fn.ID, fn.PID)
 	netns := m.NetNamespace(fn)
@@ -138,12 +139,12 @@ func (m *CNIManager) CreateCNINetwork(ctx context.Context, fn *types.Function) (
 	return result, nil
 }
 
-func CreateCNINetwork(ctx context.Context, fn *types.Function) (*gocni.Result, error) {
+func CreateCNINetwork(ctx context.Context, fn *dtypes.Function) (*gocni.Result, error) {
 	return DefaultManager.CreateCNINetwork(ctx, fn)
 }
 
 // GetIPAddress returns the IP address from container based on container name and PID
-func (m *CNIManager) GetIPAddress(fn *types.Function) (string, error) {
+func (m *CNIManager) GetIPAddress(fn *dtypes.Function) (string, error) {
 	return m.GetIPAddressRaw(fn.ID, fn.PID)
 }
 func (m *CNIManager) GetIPAddressRaw(container string, PID uint32) (string, error) {
@@ -171,7 +172,7 @@ func (m *CNIManager) GetIPAddressRaw(container string, PID uint32) (string, erro
 
 	return "", fmt.Errorf("unable to get IP address for container: %s", container)
 }
-func GetIPAddress(fn *types.Function) (string, error) {
+func GetIPAddress(fn *dtypes.Function) (string, error) {
 	return DefaultManager.GetIPAddress(fn)
 }
 func GetIPAddressRaw(container string, PID uint32) (string, error) {
@@ -226,7 +227,7 @@ func (m *CNIManager) NetID(id string, pid uint32) string {
 }
 
 // NetNamespace generates the namespace path based on task PID.
-func (m *CNIManager) NetNamespace(fn *types.Function) string {
+func (m *CNIManager) NetNamespace(fn *dtypes.Function) string {
 	if len(fn.Namespace) > 0 {
 		return fn.Namespace
 	}

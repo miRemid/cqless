@@ -9,7 +9,6 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/types"
-	"github.com/rs/zerolog/log"
 )
 
 func (p *DockerProvider) convertEnvStringsToMap(envs []string) map[string]string {
@@ -84,10 +83,8 @@ func (p *DockerProvider) getAllFunctionsByName(ctx context.Context, fnName strin
 }
 
 func (p *DockerProvider) getFunctionByContainer(ctx context.Context, c dtypes.Container, cni *cninetwork.CNIManager) (*types.Function, error) {
-	log.Debug().Str("getFunctionByContainer.containerID", c.ID).Send()
 	info, err := p.cli.ContainerInspect(ctx, c.ID)
 	if err != nil {
-		log.Err(err).Send()
 		return nil, err
 	}
 	function := p.createFunction(info)

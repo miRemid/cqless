@@ -7,12 +7,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/httputil"
+	"github.com/miRemid/cqless/pkg/provider"
+	"github.com/miRemid/cqless/pkg/resolver"
 	"github.com/miRemid/cqless/pkg/types"
-	"github.com/miRemid/cqless/pkg/utils"
 )
 
 func (gate *Gateway) MakeDeployHandler(cni *cninetwork.CNIManager, secretMountPath string, alwaysPull bool) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		evt := gate.log.With().Str("action", "deploy").Logger()
 		if ctx.Request.Body == nil {
 			return
 		}
@@ -21,43 +23,45 @@ func (gate *Gateway) MakeDeployHandler(cni *cninetwork.CNIManager, secretMountPa
 		body, _ := io.ReadAll(ctx.Request.Body)
 		req := types.FunctionCreateRequest{}
 		if err := json.Unmarshal(body, &req); err != nil {
-			httputil.BadRequest(ctx, httputil.Response{
-				Code:    httputil.StatusBadRequest,
-				Message: err.Error(),
-			})
+			evt.Err(err).Msg(httputil.ErrBadRequestParams)
+			httputil.BadRequest(ctx)
 			return
 		}
-		namespace := utils.GetRequestNamespace(req.Namespace)
-		if valid, err := gate.provider.ValidNamespace(namespace); err != nil {
-			httputil.BadRequest(ctx, httputil.Response{
-				Code:    httputil.StatusBadRequest,
-				Message: err.Error(),
-			})
-			return
-		} else if !valid {
-			httputil.BadRequest(ctx, httputil.Response{
-				Code:    httputil.StatusBadRequest,
-				Message: err.Error(),
-			})
+		namespace := GetRequestNamespace(req.Namespace)
+		if valid, err := provider.ValidNamespace(namespace); err != nil || !valid {
+			evt := evt.Error()
+			if err != nil {
+				evt.Err(err)
+			}
+			evt.Msg("校验namespace失败")
+			httputil.BadRequest(ctx)
 			return
 		}
 		namespaceSecretMountPath := getNamespaceSecretMountPath(secretMountPath, namespace)
 		if err := validateSecrets(namespaceSecretMountPath, req.Secrets); err != nil {
-			httputil.BadRequest(ctx, httputil.Response{
-				Code:    httputil.StatusBadRequest,
-				Message: err.Error(),
-			})
+			evt.Err(err).Msg("校验secretsMountPath失败")
+			httputil.BadRequest(ctx)
 			return
 		}
-		fn, err := gate.provider.Deploy(ctx, req, cni)
+		fn, err := provider.Deploy(ctx, req, cni)
 		if err != nil {
-			httputil.BadRequest(ctx, httputil.Response{
+			evt.Err(err).Msgf("创建函数 '%s' 失败", req.Name)
+			httputil.OKWithJSON(ctx, httputil.Response{
 				Code:    httputil.StatusInternalServerError,
 				Message: err.Error(),
 			})
 			return
 		}
-		httputil.OK(ctx, httputil.Response{
+		if err := resolver.Register(ctx, fn.Name, fn.Node()); err != nil {
+			gate.log.Err(err).Msgf("DNS插入失败")
+			httputil.OKWithJSON(ctx, httputil.Response{
+				Code:    httputil.StatusInternalServerError,
+				Message: err.Error(),
+			})
+			return
+		}
+		gate.log.Info().Str("函数名", fn.Name).Msg("创建函数成功")
+		httputil.OKWithJSON(ctx, httputil.Response{
 			Code: httputil.StatusOK,
 			Data: fn,
 		})

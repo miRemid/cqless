@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/miRemid/cqless/pkg/httputil"
 	"github.com/miRemid/cqless/pkg/types"
 	"github.com/mitchellh/mapstructure"
@@ -26,15 +27,18 @@ var deployCmd = &cobra.Command{
 }
 
 var (
-	deployFunctionName  string
-	deployFunctionImage string
-	deployFunctionPort  string
+	deployFunctionName   string
+	deployFunctionImage  string
+	deployFunctionPort   string
+	deployFunctionScheme string
 )
 
 func init() {
 	deployCmd.Flags().StringVarP(&deployFunctionName, "name", "n", "", "函数名称")
 	deployCmd.Flags().StringVarP(&deployFunctionImage, "image", "i", "", "容器镜像名称")
-	deployCmd.Flags().StringVarP(&deployFunctionPort, "port", "p", "8080", "函数服务监听端口")
+	deployCmd.Flags().StringVar(&deployFunctionScheme, "scheme", "http", "容器服务协议，默认http")
+	deployCmd.Flags().StringVar(&deployFunctionPort, "fn", "8080", "函数服务监听端口")
+	deployCmd.Flags().IntVarP(&httpClientGatewayPort, "port", "p", 5566, "调用端口，默认5566")
 }
 
 func deploy(cmd *cobra.Command, args []string) {
@@ -61,13 +65,19 @@ func deploy(cmd *cobra.Command, args []string) {
 		reqBody.Image = deployFunctionImage
 		reqBody.Name = deployFunctionName
 		reqBody.WatchDogPort = deployFunctionPort
+		reqBody.Scheme = deployFunctionScheme
 	}
 	var buffer bytes.Buffer
 	if err := json.NewEncoder(&buffer).Encode(reqBody); err != nil {
 		fmt.Printf("序列化请求失败: %v\n", err)
 		return
 	}
-	requestURI := fmt.Sprintf(cqless_function_api, httpClientGatewayAddress, httpClientGatewayPort)
+	validate := validator.New()
+	if err := validate.Struct(reqBody); err != nil {
+		fmt.Println(err)
+		return
+	}
+	requestURI := getApiRequestURI()
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout)*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURI, &buffer)

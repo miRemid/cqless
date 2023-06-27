@@ -27,6 +27,7 @@ var rmCmd = &cobra.Command{
 
 func init() {
 	rmCmd.Flags().StringVar(&functionName, "fn", "", "需要删除的函数名称")
+	rmCmd.Flags().IntVarP(&httpClientGatewayPort, "port", "p", 5566, "调用端口，默认5566")
 }
 
 func remove(cmd *cobra.Command, args []string) {
@@ -59,7 +60,7 @@ func remove(cmd *cobra.Command, args []string) {
 		fmt.Println(err)
 		return
 	}
-	requestURI := fmt.Sprintf(cqless_function_api, httpClientGatewayAddress, httpClientGatewayPort)
+	requestURI := getApiRequestURI()
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout)*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, requestURI, &buffer)

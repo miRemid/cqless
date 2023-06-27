@@ -8,7 +8,7 @@ import (
 
 	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/types"
-	_ "github.com/miRemid/cqless/pkg/utils"
+	"github.com/rs/zerolog/log"
 	"gotest.tools/v3/assert"
 )
 
@@ -17,10 +17,10 @@ var (
 )
 
 func init() {
-	if err := p.Init(types.GetConfig().Gateway); err != nil {
+	if err := p.Init(types.GetConfig().Provider, log.Logger); err != nil {
 		panic(err)
 	}
-	if err := cninetwork.Init(types.GetConfig()); err != nil {
+	if err := cninetwork.Init(types.GetConfig().Network); err != nil {
 		panic(err)
 	}
 }

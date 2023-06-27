@@ -8,49 +8,67 @@ import (
 	"net/url"
 	"sync"
 
+	"github.com/miRemid/cqless/pkg/cqhttp/types"
 	"github.com/miRemid/cqless/pkg/httputil"
-	"github.com/miRemid/cqless/pkg/types"
+	"github.com/miRemid/cqless/pkg/logger"
+	dtypes "github.com/miRemid/cqless/pkg/types"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
 var defaultCQHTTPManager *CQHTTPManager
 var mutex sync.Mutex
 
-func GetDefaultCQHTTPManager() *CQHTTPManager {
-	if defaultCQHTTPManager == nil {
-		mutex.Lock()
-		if defaultCQHTTPManager == nil {
-			defaultCQHTTPManager = NewCQHTTPManager(types.GetConfig())
-		}
-		mutex.Unlock()
-	}
-	return defaultCQHTTPManager
+func init() {
+	defaultCQHTTPManager = new(CQHTTPManager)
 }
 
 type CQHTTPManager struct {
 	mutex       sync.RWMutex
 	websockets_ sync.Map
-	config      *types.CQHTTPConfig
+	config      *types.CQHTTPOption
 	messageChan chan *CQHTTPMessage
 	quickReply  chan *CQHTTPMessage
 	httpClient  *http.Client
+
+	log zerolog.Logger
 }
 
-func NewCQHTTPManager(config *types.CQLessConfig) *CQHTTPManager {
+func NewCQHTTPManager(config *types.CQHTTPOption) *CQHTTPManager {
 	m := &CQHTTPManager{
-		config:      config.CQHTTP,
+		config:      config,
 		websockets_: sync.Map{},
 		messageChan: make(chan *CQHTTPMessage),
 		quickReply:  make(chan *CQHTTPMessage),
 		mutex:       sync.RWMutex{},
 		httpClient:  &http.Client{},
+		log:         log.Hook(logger.ModuleHook("cqhttp")),
 	}
-	log.Info().Msg("启动消息缓存队列")
+	m.log.Info().Msg("启动消息缓存队列")
 	go m.processMessageQueue()
-	log.Info().Msg("启动快速回复队列")
+	m.log.Info().Msg("启动快速回复队列")
 	go m.processQuickReployQueue()
 	return m
+}
+
+func Init(opt *types.CQHTTPOption) error {
+	return defaultCQHTTPManager.Init(opt)
+}
+
+func (m *CQHTTPManager) Init(opt *types.CQHTTPOption) error {
+	m.config = opt
+	m.websockets_ = sync.Map{}
+	m.messageChan = make(chan *CQHTTPMessage)
+	m.quickReply = make(chan *CQHTTPMessage)
+	m.mutex = sync.RWMutex{}
+	m.httpClient = &http.Client{}
+	m.log = log.Hook(logger.ModuleHook("cqhttp"))
+	m.log.Info().Msg("start message cache queue")
+	go m.processMessageQueue()
+	m.log.Info().Msg("start quick reply queue")
+	go m.processQuickReployQueue()
+	return nil
 }
 
 func (m *CQHTTPManager) processMessageQueue() {
@@ -66,7 +84,7 @@ func (m *CQHTTPManager) processMessageQueue() {
 		}
 		// 调用目标函数
 		cqless_invoke_api := "http://%s:%d/function/%s"
-		requestURI := fmt.Sprintf(cqless_invoke_api, "localhost", types.GetConfig().Gateway.Port, funcName)
+		requestURI := fmt.Sprintf(cqless_invoke_api, "localhost", dtypes.GetConfig().Gateway.Port, funcName)
 		uri, _ := url.Parse(requestURI)
 		query := uri.Query()
 		for _, p := range params {

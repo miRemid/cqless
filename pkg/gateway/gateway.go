@@ -2,59 +2,37 @@ package gateway
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path"
-	"strings"
-	"sync"
 
-	"github.com/miRemid/cqless/pkg/gateway/resolver"
-	"github.com/miRemid/cqless/pkg/provider"
-	"github.com/miRemid/cqless/pkg/provider/docker"
-	"github.com/miRemid/cqless/pkg/types"
+	"github.com/miRemid/cqless/pkg/gateway/types"
+	"github.com/miRemid/cqless/pkg/logger"
+	dtypes "github.com/miRemid/cqless/pkg/types"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
 var (
-	defaultGateway  *Gateway
-	proxyClientPool *sync.Pool
+	defaultGateway *Gateway
 )
 
 func init() {
 	defaultGateway = new(Gateway)
 }
 
-func Init(config *types.CQLessConfig) error {
-	// https://github.com/rfyiamcool/notes/blob/main/golang_net_http_optimize.md
-	proxyClientPool = &sync.Pool{
-		New: func() any {
-			return provider.NewProxyClientFromConfig(config.Proxy)
-		},
-	}
-	return defaultGateway.Init(config.Gateway)
+func Init(config *types.GatewayOption) error {
+
+	return defaultGateway.Init(config)
 }
 
 type Gateway struct {
-	provider provider.ProviderPluginInterface
-
-	dns *resolver.Resolver
+	log zerolog.Logger
 }
 
-func (gate *Gateway) Init(config *types.GatewayConfig) error {
-
-	providerType := strings.ToUpper(config.Provider)
-	switch providerType {
-	case "DOCKER":
-		gate.provider = docker.NewProvider()
-	default:
-		providerType = "DOCKER"
-		gate.provider = docker.NewProvider()
-	}
-	log.Info().Msgf("正在使用: '%s' 作为Provider", providerType)
-	if err := gate.provider.Init(config); err != nil {
-		return err
-	}
-	gate.dns = resolver.NewResolverFromConfig(config.Resolver)
-	log.Info().Msgf("正在使用：'%s' 作为Resolver", config.Resolver.Type)
+func (gate *Gateway) Init(config *types.GatewayOption) error {
+	gate.log = log.Hook(logger.ModuleHook("gateway"))
+	// https://github.com/rfyiamcool/notes/blob/main/golang_net_http_optimize.md
 	return nil
 }
 
@@ -68,4 +46,16 @@ func validateSecrets(secretMountPath string, secrets []string) error {
 		}
 	}
 	return nil
+}
+func GetRequestNamespace(namespace string) string {
+	if len(namespace) > 0 {
+		return namespace
+	}
+	return dtypes.DEFAULT_FUNCTION_NAMESPACE
+}
+
+func GetNamespaceFromRequest(r *http.Request) string {
+	q := r.URL.Query()
+	namespace := q.Get("namespace")
+	return GetRequestNamespace(namespace)
 }

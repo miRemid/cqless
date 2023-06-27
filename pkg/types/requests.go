@@ -8,13 +8,16 @@ import (
 
 type FunctionCreateRequest struct {
 	// Name is the name of the function deployment
-	Name string `json:"name"`
+	Name string `json:"name" validate:"required"`
 
 	// Image is a fully-qualified container image
-	Image string `json:"image"`
+	Image string `json:"image" validate:"required"`
 
-	// WatchDogPort 是容器提供HTTP接口的端口号，默认8080
-	WatchDogPort string `json:"watchDogPort,omitempty"`
+	// WatchDogPort 是容器提供HTTP接口的端口号
+	WatchDogPort string `json:"port" validate:"required"`
+
+	// Scheme 容器服务的协议
+	Scheme string `json:"scheme" validate:"required"`
 
 	// Namespace for the function, if supported by the faas-provider
 	Namespace string `json:"namespace,omitempty"`

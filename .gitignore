@@ -19,11 +19,12 @@ cqless
 # vendor/
 
 # Go workspace file
-go.work
+# go.work
+# go.work.sum
 
 # wait for finish the module
+docker-tobedone
 builder
-docker
 scripts
 
 # test directory
@@ -32,3 +33,8 @@ tempdata
 hosts
 message.json
 build
+
+# idea
+.idea
+
+db
