@@ -78,7 +78,8 @@ func initConfig() {
 		MaxAge:         7,
 	})
 	viper.SetDefault("gateway", gtypes.GatewayOption{
-		Port:            5566,
+		Address:         "127.0.0.1:5565",
+		HTTPAddress:     "127.0.0.1:5566",
 		ReadTimeout:     60 * time.Second,
 		WriteTimeout:    60 * time.Second,
 		EnableRateLimit: false,
@@ -89,7 +90,7 @@ func initConfig() {
 		EnablePprof: true,
 	})
 	viper.SetDefault("proxy", proxyTypes.ProxyOption{
-		Port:                5567,
+		Address:             "127.0.0.1:5567",
 		Timeout:             10 * time.Second,
 		MaxIdleConns:        30,
 		MaxIdleConnsPerHost: 30,

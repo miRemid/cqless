@@ -11,8 +11,7 @@ import (
 // functionCmd represents the function command
 var functionCmd = &cobra.Command{
 	Use:   "func",
-	Short: "函数相关命令",
-	Long:  `调用网关执行函数相关命令，包括创建、获取、执行等`,
+	Short: "function crud",
 }
 
 func init() {

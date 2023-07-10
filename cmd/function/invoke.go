@@ -28,12 +28,14 @@ var invokeCmd = &cobra.Command{
 }
 
 var (
+	functionProxyAddress   string
 	functionInvokeData     string
 	functionInvokeDataType string
 )
 
 func init() {
 	invokeCmd.Flags().StringVar(&functionName, "fn", "", "需要调用的函数名称")
+	invokeCmd.Flags().StringVarP(&functionProxyAddress, "address", "a", "127.0.0.1", "代理网关地址")
 	invokeCmd.Flags().StringVarP(&functionInvokeData, "data", "d", "", "需要发送的数据")
 	invokeCmd.Flags().StringVarP(&functionInvokeDataType, "type", "t", "", "需要发送的数据格式，json或者form")
 	invokeCmd.Flags().IntVarP(&httpClientProxyPort, "port", "p", 5567, "调用端口，默认5567")
@@ -41,7 +43,7 @@ func init() {
 
 func invoke(cmd *cobra.Command, args []string) {
 	// 优先处理配置文件
-	var reqBody types.FunctionRequest
+	var reqBody types.FunctionInvokeRequest
 	if functionConfigPath != "" {
 		// 1. read yaml file
 		functionConfigReader.SetConfigFile(functionConfigPath)
@@ -61,8 +63,8 @@ func invoke(cmd *cobra.Command, args []string) {
 	} else {
 		reqBody.FunctionName = functionName
 	}
-	requestURI := fmt.Sprintf(cqless_invoke_api, httpClientGatewayAddress, httpClientProxyPort, reqBody.FunctionName)
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout)*time.Second)
+	requestURI := fmt.Sprintf(cqless_invoke_api, functionProxyAddress, httpClientProxyPort, reqBody.FunctionName)
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(timeout)*time.Second)
 	defer cancel()
 	var body io.Reader = nil
 	var contentType string

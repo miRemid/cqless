@@ -3,7 +3,8 @@ package types
 import "time"
 
 type GatewayOption struct {
-	Port         int           `yaml:"port" mapstructure:"port"`
+	Address      string        `yaml:"address" mapstructure:"address"`
+	HTTPAddress  string        `yaml:"http_address" mapstructure:"http_address"`
 	ReadTimeout  time.Duration `yaml:"read_timeout" mapstructure:"read_timeout"`
 	WriteTimeout time.Duration `yaml:"write_timeout" mapstructure:"write_timeout"`
 

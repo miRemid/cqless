@@ -20,7 +20,5 @@ import (
 )
 
 func main() {
-	// logger.InitLogger(types.GetConfig().Logger)
-
 	cmd.Execute()
 }

@@ -1,5 +1,3 @@
-API_VERSION := v1
-
 GOCMD=go
 GOTEST=$(GOCMD) test
 GOVET=$(GOCMD) vet
@@ -17,8 +15,8 @@ WHITE  := $(shell tput -Txterm setaf 7)
 CYAN   := $(shell tput -Txterm setaf 6)
 RESET  := $(shell tput -Txterm sgr0)
 
-GEN_DIR := $(API_VERSION)/pkg
-PROTO_FILES := $(wildcard $(API_VERSION)/pb/*.proto)
+GEN_DIR := pkg
+PROTO_FILES := $(wildcard pb/*.proto)
 define exec-command
 $(1)
 
@@ -31,13 +29,13 @@ all: help
 ## Build:
 build-test:
 	mkdir -p build/bin
-	$(GOCMD) build -o build/bin/$(BINARY_NAME) $(API_VERSION)/*.go
+	$(GOCMD) build -o build/bin/$(BINARY_NAME) *.go
 build: ## Build your project and put the output binary in out/bin/
 	mkdir -p build/bin
-	CGO_ENABLED=$(USE_CGO) $(GOCMD) build -a -ldflags '-s' -o build/bin/$(BINARY_NAME) $(API_VERSION)/*.go
+	CGO_ENABLED=$(USE_CGO) $(GOCMD) build -a -ldflags '-s' -o build/bin/$(BINARY_NAME) *.go
 build-vendor:
 	mkdir -p build/bin
-	CGO_ENABLED=$(USE_CGO) $(GOCMD) build -a -ldflags '-s' -mod vendor -o build/bin/$(BINARY_NAME) $(API_VERSION)/*.go
+	CGO_ENABLED=$(USE_CGO) $(GOCMD) build -a -ldflags '-s' -mod vendor -o build/bin/$(BINARY_NAME) *.go
 
 clean: ## Remove build related file
 	rm -fr ./build

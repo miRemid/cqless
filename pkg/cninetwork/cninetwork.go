@@ -14,7 +14,7 @@ import (
 
 	gocni "github.com/containerd/go-cni"
 	"github.com/miRemid/cqless/pkg/cninetwork/types"
-	dtypes "github.com/miRemid/cqless/pkg/types"
+	"github.com/miRemid/cqless/pkg/pb"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -103,10 +103,10 @@ func Init(config *types.NetworkOption) error {
 }
 
 // DeleteCNINetwork deletes a CNI network based on container's id and pid
-func (m *CNIManager) DeleteCNINetwork(ctx context.Context, fn *dtypes.Function) error {
-	log.Printf("[Delete] removing CNI network for: %s\n", fn.ID)
+func (m *CNIManager) DeleteCNINetwork(ctx context.Context, fn *pb.Function) error {
+	log.Printf("[Delete] removing CNI network for: %s\n", fn.Id)
 
-	id := m.NetID(fn.ID, fn.PID)
+	id := m.NetID(fn.Id, fn.Pid)
 	netns := m.NetNamespace(fn)
 
 	if err := m.cli.Remove(ctx, id, netns); err != nil {
@@ -117,14 +117,14 @@ func (m *CNIManager) DeleteCNINetwork(ctx context.Context, fn *dtypes.Function) 
 	return nil
 }
 
-func DeleteCNINetwork(ctx context.Context, fn *dtypes.Function) error {
+func DeleteCNINetwork(ctx context.Context, fn *pb.Function) error {
 	return DefaultManager.DeleteCNINetwork(ctx, fn)
 }
 
 // CreateCNINetwork creates a CNI network interface and attaches it to the context
-func (m *CNIManager) CreateCNINetwork(ctx context.Context, fn *dtypes.Function) (*gocni.Result, error) {
+func (m *CNIManager) CreateCNINetwork(ctx context.Context, fn *pb.Function) (*gocni.Result, error) {
 	log.Info().Msgf("start to create cninetwork for function: %s", fn.Name)
-	id := m.NetID(fn.ID, fn.PID)
+	id := m.NetID(fn.Id, fn.Pid)
 	netns := m.NetNamespace(fn)
 	result, err := m.cli.Setup(ctx, id, netns, gocni.WithLabels(fn.Labels))
 	if err != nil {
@@ -135,19 +135,19 @@ func (m *CNIManager) CreateCNINetwork(ctx context.Context, fn *dtypes.Function) 
 	if err != nil {
 		return nil, err
 	}
-	fn.IPAddress = ipAddress
+	fn.IpAddress = ipAddress
 	return result, nil
 }
 
-func CreateCNINetwork(ctx context.Context, fn *dtypes.Function) (*gocni.Result, error) {
+func CreateCNINetwork(ctx context.Context, fn *pb.Function) (*gocni.Result, error) {
 	return DefaultManager.CreateCNINetwork(ctx, fn)
 }
 
 // GetIPAddress returns the IP address from container based on container name and PID
-func (m *CNIManager) GetIPAddress(fn *dtypes.Function) (string, error) {
-	return m.GetIPAddressRaw(fn.ID, fn.PID)
+func (m *CNIManager) GetIPAddress(fn *pb.Function) (string, error) {
+	return m.GetIPAddressRaw(fn.Id, fn.Pid)
 }
-func (m *CNIManager) GetIPAddressRaw(container string, PID uint32) (string, error) {
+func (m *CNIManager) GetIPAddressRaw(container string, PID int64) (string, error) {
 	CNIDir := path.Join(m.config.NetworkSavePath, m.config.NetworkName)
 	log.Debug().Msgf("search CNIDir: %s", CNIDir)
 	files, err := os.ReadDir(CNIDir)
@@ -172,10 +172,10 @@ func (m *CNIManager) GetIPAddressRaw(container string, PID uint32) (string, erro
 
 	return "", fmt.Errorf("unable to get IP address for container: %s", container)
 }
-func GetIPAddress(fn *dtypes.Function) (string, error) {
+func GetIPAddress(fn *pb.Function) (string, error) {
 	return DefaultManager.GetIPAddress(fn)
 }
-func GetIPAddressRaw(container string, PID uint32) (string, error) {
+func GetIPAddressRaw(container string, PID int64) (string, error) {
 	return DefaultManager.GetIPAddressRaw(container, PID)
 }
 
@@ -203,7 +203,7 @@ func CNIGateway() (string, error) {
 //
 // nats-621
 // eth1
-func (m *CNIManager) isCNIResultForPID(fileName, container string, PID uint32) (bool, error) {
+func (m *CNIManager) isCNIResultForPID(fileName, container string, PID int64) (bool, error) {
 	found := false
 	f, err := os.Open(fileName)
 	if err != nil {
@@ -222,16 +222,16 @@ func (m *CNIManager) isCNIResultForPID(fileName, container string, PID uint32) (
 }
 
 // NetID generates the network IF based on task name and task PID
-func (m *CNIManager) NetID(id string, pid uint32) string {
+func (m *CNIManager) NetID(id string, pid int64) string {
 	return fmt.Sprintf("%s-%d", id, pid)
 }
 
 // NetNamespace generates the namespace path based on task PID.
-func (m *CNIManager) NetNamespace(fn *dtypes.Function) string {
+func (m *CNIManager) NetNamespace(fn *pb.Function) string {
 	if len(fn.Namespace) > 0 {
 		return fn.Namespace
 	}
-	fn.Namespace = fmt.Sprintf(m.config.NamespaceFormat, fn.ID)
+	fn.Namespace = fmt.Sprintf(m.config.NamespaceFormat, fn.Id)
 	return fn.Namespace
 }
 

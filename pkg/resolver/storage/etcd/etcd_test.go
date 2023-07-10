@@ -5,9 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/miRemid/cqless/pkg/resolver/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"gotest.tools/v3/assert"
+
+	"github.com/miRemid/cqless/pkg/resolver/types"
 )
 
 var (
