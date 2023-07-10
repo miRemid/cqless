@@ -5,81 +5,66 @@ package function
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
+	"os"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/miRemid/cqless/pkg/httputil"
-	"github.com/miRemid/cqless/pkg/types"
+	v1 "github.com/miRemid/cqless/pkg/pb"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // inspectCmd represents the inspect command
 var inspectCmd = &cobra.Command{
 	Use:   "inspect",
-	Short: "检查",
+	Short: "get function infomation",
 	Run:   inspect,
 }
 
 func init() {
 	inspectCmd.Flags().StringVar(&functionName, "fn", "", "需要检查的函数名称")
-	inspectCmd.PersistentFlags().IntVarP(&httpClientGatewayPort, "port", "p", 5566, "调用端口，默认5566")
 }
 
 func inspect(cmd *cobra.Command, args []string) {
-	var reqBody types.FunctionInspectRequest
+	var reqBody v1.GetFunctionRequest
 	if functionConfigPath != "" {
 		functionConfigReader.SetConfigFile(functionConfigPath)
 		if err := functionConfigReader.ReadInConfig(); err != nil {
-			fmt.Printf("读取部署文件配置失败: %v\n", err)
-			return
+			fmt.Printf("read function config faield: %v\n", err)
+			os.Exit(1)
 		}
 		if err := functionConfigReader.Unmarshal(&reqBody, viper.DecoderConfigOption(func(dc *mapstructure.DecoderConfig) {
 			dc.TagName = "json"
 		})); err != nil {
-			fmt.Printf("读取部署文件配置失败: %v\n", err)
-			return
+			fmt.Printf("read function config failed: %v\n", err)
+			os.Exit(1)
 		}
 	} else {
-		reqBody.FunctionName = functionName
+		reqBody.Name = functionName
 	}
 
-	requestURI := getApiRequestURI()
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout)*time.Second)
+	conn, err := grpc.Dial(grpcServerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		fmt.Println("connect to cqless failed: ", err)
+		os.Exit(2)
+	}
+	defer conn.Close()
+	client := v1.NewFunctionServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURI, nil)
+	resp, err := client.GetFunction(ctx, &reqBody)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Println("get functions failed: ", err)
+		os.Exit(2)
 	}
-	if reqBody.FunctionName != "" {
-		query := req.URL.Query()
-		query.Add("fn", functionName)
-		req.URL.RawQuery = query.Encode()
+	tb := table.NewWriter()
+	tb.AppendHeader(table.Row{"Name", "Full Name", "ID", "IP Address", "Status"})
+	for _, f := range resp.Functions {
+		tb.AppendRow(table.Row{f.Name, f.FullName, f.Id, f.IpAddress, f.Status})
 	}
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer resp.Body.Close()
-
-	var response httputil.Response
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		fmt.Printf("处理查询数据错误: %v", err)
-		return
-	}
-	if fns, ok := response.Data.([]interface{}); ok {
-		tb := table.NewWriter()
-		tb.AppendHeader(table.Row{"Name", "Full Name", "ID", "IP Address", "Status"})
-		for _, f := range fns {
-			fn := f.(map[string]interface{})
-			tb.AppendRow(table.Row{fn["name"], fn["full_name"], fn["id"], fn["ip"], fn["status"]})
-		}
-		fmt.Println(tb.Render())
-	}
+	fmt.Println(tb.Render())
 }

@@ -1,6 +1,10 @@
 package types
 
 const (
+	CQLESS_VERSION = "v1beta-0.0.1"
+)
+
+const (
 	DEFAULT_FUNCTION_NAMESPACE  = "cqless-fn-ns"
 	DEFAULT_FUNCTION_NAME_LABEL = "cqless-fn-nm"
 	DEFAULT_FUNCTION_PORT_LABEL = "cqless-fn-port"

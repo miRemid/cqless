@@ -4,18 +4,17 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package function
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
+	"os"
 	"time"
 
-	"github.com/miRemid/cqless/pkg/httputil"
-	"github.com/miRemid/cqless/pkg/types"
+	v1 "github.com/miRemid/cqless/pkg/pb"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // rmCmd represents the rm command
@@ -26,64 +25,42 @@ var rmCmd = &cobra.Command{
 }
 
 func init() {
-	rmCmd.Flags().StringVar(&functionName, "fn", "", "需要删除的函数名称")
-	rmCmd.Flags().IntVarP(&httpClientGatewayPort, "port", "p", 5566, "调用端口，默认5566")
+	rmCmd.Flags().StringVar(&functionName, "fn", "", "function name needs to be deleted")
 }
 
 func remove(cmd *cobra.Command, args []string) {
 
-	var reqBody types.FunctionRemoveRequest
-	// 优先处理配置文件
+	var reqBody v1.Function
 	if functionConfigPath != "" {
-		// 1. read yaml file
 		functionConfigReader.SetConfigFile(functionConfigPath)
-		// functionConfigReader.AddConfigPath(functionConfigPath)
 		if err := functionConfigReader.ReadInConfig(); err != nil {
-			fmt.Printf("读取部署文件配置失败: %v\n", err)
-			return
+			fmt.Printf("read config file failed: %v\n", err)
+			os.Exit(1)
 		}
 		if err := functionConfigReader.Unmarshal(&reqBody, viper.DecoderConfigOption(func(dc *mapstructure.DecoderConfig) {
 			dc.TagName = "json"
 		})); err != nil {
-			fmt.Printf("读取部署文件配置失败: %v\n", err)
-			return
+			fmt.Printf("read config file failed: %v\n", err)
+			os.Exit(1)
 		}
 	} else if functionName == "" {
-		fmt.Println("未找到函数名称")
-		return
+		fmt.Println("function name can not be empty!")
+		os.Exit(1)
 	} else {
-		reqBody.FunctionName = functionName
+		reqBody.Name = functionName
 	}
-
-	var buffer bytes.Buffer
-	if err := json.NewEncoder(&buffer).Encode(reqBody); err != nil {
-		fmt.Println(err)
-		return
+	conn, err := grpc.Dial(grpcServerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		fmt.Println("connect to cqless failed: ", err)
+		os.Exit(2)
 	}
-	requestURI := getApiRequestURI()
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(httpTimeout)*time.Second)
+	defer conn.Close()
+	client := v1.NewFunctionServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, requestURI, &buffer)
+	_, err = client.DeleteFunction(ctx, &v1.DeleteFunctionRequest{Name: reqBody.Name})
 	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	query := req.URL.Query()
-	query.Add("namespace", functionNamespace)
-	req.URL.RawQuery = query.Encode()
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer resp.Body.Close()
-	var response httputil.Response
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		fmt.Println(err)
-		return
-	}
-	if response.Code != httputil.StatusOK {
-		fmt.Println(response.Message)
+		fmt.Println("delete function failed: ", err)
+		os.Exit(2)
 	}
 }

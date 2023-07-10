@@ -1,16 +1,18 @@
 package gateway
 
 import (
-	"fmt"
-	"net/http"
-	"os"
-	"path"
+	"context"
 
+	"github.com/miRemid/cqless/pkg/cninetwork"
 	"github.com/miRemid/cqless/pkg/gateway/types"
 	"github.com/miRemid/cqless/pkg/logger"
-	dtypes "github.com/miRemid/cqless/pkg/types"
+	"github.com/miRemid/cqless/pkg/pb"
+	"github.com/miRemid/cqless/pkg/provider"
+	"github.com/miRemid/cqless/pkg/resolver"
+	rtypes "github.com/miRemid/cqless/pkg/resolver/types"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 var (
@@ -22,40 +24,65 @@ func init() {
 }
 
 func Init(config *types.GatewayOption) error {
-
 	return defaultGateway.Init(config)
 }
 
 type Gateway struct {
+	pb.UnimplementedFunctionServiceServer
 	log zerolog.Logger
 }
 
 func (gate *Gateway) Init(config *types.GatewayOption) error {
 	gate.log = log.Hook(logger.ModuleHook("gateway"))
-	// https://github.com/rfyiamcool/notes/blob/main/golang_net_http_optimize.md
 	return nil
 }
 
-func getNamespaceSecretMountPath(userSecretPath string, namespace string) string {
-	return path.Join(userSecretPath, namespace)
-}
-func validateSecrets(secretMountPath string, secrets []string) error {
-	for _, secret := range secrets {
-		if _, err := os.Stat(path.Join(secretMountPath, secret)); err != nil {
-			return fmt.Errorf("unable to find secret: %s", secret)
-		}
+func (g *Gateway) CreateFunction(ctx context.Context, req *pb.CreateFunctionRequest) (*pb.Function, error) {
+	function, err := provider.Deploy(ctx, req, cninetwork.DefaultManager)
+	if err != nil {
+		return nil, err
 	}
-	return nil
-}
-func GetRequestNamespace(namespace string) string {
-	if len(namespace) > 0 {
-		return namespace
+	if err := resolver.Register(ctx, function.Name, rtypes.NewNode(
+		function.Scheme,
+		function.IpAddress+":"+function.WatchDogPort,
+		function.Name, function.Metadata,
+	)); err != nil {
+		defer provider.Remove(context.Background(), &pb.DeleteFunctionRequest{
+			Name: function.Name,
+		}, cninetwork.DefaultManager)
+		return nil, err
 	}
-	return dtypes.DEFAULT_FUNCTION_NAMESPACE
+	return function, nil
 }
 
-func GetNamespaceFromRequest(r *http.Request) string {
-	q := r.URL.Query()
-	namespace := q.Get("namespace")
-	return GetRequestNamespace(namespace)
+func (g *Gateway) ListFunctions(ctx context.Context, req *pb.ListFunctionsRequest) (*pb.ListFunctionsResponse, error) {
+	fns, err := provider.Inspect(ctx, &pb.GetFunctionRequest{}, cninetwork.DefaultManager)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.ListFunctionsResponse{
+		Functions: fns,
+	}, nil
+}
+
+func (g *Gateway) GetFunction(ctx context.Context, req *pb.GetFunctionRequest) (*pb.ListFunctionsResponse, error) {
+	fns, err := provider.Inspect(ctx, req, cninetwork.DefaultManager)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.ListFunctionsResponse{
+		Functions: fns,
+	}, nil
+}
+
+func (g *Gateway) DeleteFunction(ctx context.Context, req *pb.DeleteFunctionRequest) (*emptypb.Empty, error) {
+	err := provider.Remove(ctx, req, cninetwork.DefaultManager)
+	if err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func New() *Gateway {
+	return &Gateway{}
 }

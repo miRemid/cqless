@@ -7,12 +7,13 @@ import (
 
 	dtypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+
 	"github.com/miRemid/cqless/pkg/cninetwork"
+	"github.com/miRemid/cqless/pkg/pb"
 	"github.com/miRemid/cqless/pkg/types"
 )
 
 func (p *DockerProvider) convertEnvStringsToMap(envs []string) map[string]string {
-
 	var env = make(map[string]string)
 	for _, e := range envs {
 		splits := strings.Split(e, "=")
@@ -22,15 +23,15 @@ func (p *DockerProvider) convertEnvStringsToMap(envs []string) map[string]string
 
 }
 
-func (p *DockerProvider) createFunction(info dtypes.ContainerJSON) *types.Function {
-	var fn = new(types.Function)
+func (p *DockerProvider) createFunction(info dtypes.ContainerJSON) *pb.Function {
+	var fn = new(pb.Function)
 
-	fn.ID = info.ID
-	fn.PID = uint32(info.State.Pid)
+	fn.Id = info.ID
+	fn.Pid = int64(info.State.Pid)
 	fn.Name = info.Config.Labels[types.DEFAULT_FUNCTION_NAME_LABEL]
-	fn.WatchdogPort = info.Config.Labels[types.DEFAULT_FUNCTION_PORT_LABEL]
+	fn.WatchDogPort = info.Config.Labels[types.DEFAULT_FUNCTION_PORT_LABEL]
 	fn.FullName = info.Name
-	fn.EnvVars = p.convertEnvStringsToMap(info.Config.Env)
+	fn.Envs = p.convertEnvStringsToMap(info.Config.Env)
 	fn.Metadata = info.Config.Labels
 	fn.Namespace = info.NetworkSettings.SandboxKey
 	fn.Status = info.State.Status
@@ -46,12 +47,12 @@ func (p *DockerProvider) getAllFunctionContainers(ctx context.Context, fs ...fil
 	return containers, err
 }
 
-func (p *DockerProvider) getAllFunctions(ctx context.Context, cni *cninetwork.CNIManager, fs ...filters.KeyValuePair) ([]*types.Function, error) {
+func (p *DockerProvider) getAllFunctions(ctx context.Context, cni *cninetwork.CNIManager, fs ...filters.KeyValuePair) ([]*pb.Function, error) {
 	containers, err := p.getAllFunctionContainers(ctx, fs...)
 	if err != nil {
 		return nil, err
 	}
-	var functionChan = make(chan *types.Function, len(containers))
+	var functionChan = make(chan *pb.Function, len(containers))
 	wg := sync.WaitGroup{}
 	for _, info := range containers {
 		wg.Add(1)
@@ -66,7 +67,7 @@ func (p *DockerProvider) getAllFunctions(ctx context.Context, cni *cninetwork.CN
 	}
 	wg.Wait()
 	close(functionChan)
-	var res = make([]*types.Function, 0)
+	var res = make([]*pb.Function, 0)
 	for len(functionChan) != 0 {
 		fn := <-functionChan
 		res = append(res, fn)
@@ -74,7 +75,7 @@ func (p *DockerProvider) getAllFunctions(ctx context.Context, cni *cninetwork.CN
 	return res, nil
 }
 
-func (p *DockerProvider) getAllFunctionsByName(ctx context.Context, fnName string, cni *cninetwork.CNIManager) ([]*types.Function, error) {
+func (p *DockerProvider) getAllFunctionsByName(ctx context.Context, fnName string, cni *cninetwork.CNIManager) ([]*pb.Function, error) {
 	functions, err := p.getAllFunctions(ctx, cni, filters.Arg("name", fnName))
 	if err != nil {
 		return nil, err
@@ -82,7 +83,7 @@ func (p *DockerProvider) getAllFunctionsByName(ctx context.Context, fnName strin
 	return functions, nil
 }
 
-func (p *DockerProvider) getFunctionByContainer(ctx context.Context, c dtypes.Container, cni *cninetwork.CNIManager) (*types.Function, error) {
+func (p *DockerProvider) getFunctionByContainer(ctx context.Context, c dtypes.Container, cni *cninetwork.CNIManager) (*pb.Function, error) {
 	info, err := p.cli.ContainerInspect(ctx, c.ID)
 	if err != nil {
 		return nil, err
@@ -92,7 +93,7 @@ func (p *DockerProvider) getFunctionByContainer(ctx context.Context, c dtypes.Co
 	if err != nil {
 		return nil, err
 	}
-	function.IPAddress = ip
+	function.IpAddress = ip
 	return function, nil
 }
 

@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/miRemid/cqless/pkg/resolver/types"
 	"github.com/rs/zerolog"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
+
+	"github.com/miRemid/cqless/pkg/resolver/types"
 )
 
 const (
