@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/miRemid/cqless/pkg/cninetwork"
+	"github.com/miRemid/cqless/pkg/pb"
 	"github.com/miRemid/cqless/pkg/types"
 
 	dtypes "github.com/docker/docker/api/types" // docker types
@@ -41,7 +42,7 @@ import (
 // 	return format + "\r"
 // }
 
-func (p *DockerProvider) pull(ctx context.Context, req types.FunctionCreateRequest) error {
+func (p *DockerProvider) pull(ctx context.Context, req *pb.Function) error {
 	// 1. check local
 	filter := filters.NewArgs(filters.Arg("reference", req.Image))
 	img, err := p.cli.ImageList(ctx, dtypes.ImageListOptions{
@@ -79,37 +80,37 @@ func (p *DockerProvider) pull(ctx context.Context, req types.FunctionCreateReque
 	return nil
 }
 
-func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateRequest, cni *cninetwork.CNIManager) (*types.Function, error) {
-	p.log.Printf("start to pull %s\n", req.Image)
-	err := p.pull(ctx, req)
+func (p *DockerProvider) Deploy(ctx context.Context, req *pb.CreateFunctionRequest, cni *cninetwork.CNIManager) (*pb.Function, error) {
+	function := req.Function
+	p.log.Printf("start to pull %s\n", function.Image)
+	err := p.pull(ctx, function)
 	if err != nil {
 		return nil, err
 	}
-	p.log.Printf("start to deploy function: %s\n", req.Name)
-	labels, err := req.BuildLabels()
-	if err != nil {
-		return nil, err
+	p.log.Printf("start to deploy function: %s\n", function.Name)
+	labels := function.Labels
+	if labels == nil {
+		labels = make(map[string]string)
 	}
-	labels[types.DEFAULT_FUNCTION_NAME_LABEL] = req.Name // 添加一个 DEFAULT_FUNCTION_NAME_LABEL = FunctionName 用于后续查找
-	if req.WatchDogPort == "" {
-		req.WatchDogPort = types.DEFAULT_WATCHDOG_PORT
+	labels[types.DEFAULT_FUNCTION_NAME_LABEL] = function.Name // 添加一个 DEFAULT_FUNCTION_NAME_LABEL = FunctionName 用于后续查找
+	if function.WatchDogPort == "" {
+		function.WatchDogPort = types.DEFAULT_WATCHDOG_PORT
 	}
-	labels[types.DEFAULT_FUNCTION_PORT_LABEL] = req.WatchDogPort // 添加一个WatchPort标签，用于Resolve
+	labels[types.DEFAULT_FUNCTION_PORT_LABEL] = function.WatchDogPort // 添加一个WatchPort标签，用于Resolve
 
 	// 计算一个Hash Label，用于区分
-	hashKey := fmt.Sprintf("%s%v", req.Name, time.Now())
+	hashKey := fmt.Sprintf("%s%v", function.Name, time.Now())
 	hashValue := sha256.Sum256([]byte(hashKey))
-	containerName := fmt.Sprintf("%s-%x", req.Name, hashValue[:4])
+	containerName := fmt.Sprintf("%s-%x", function.Name, hashValue[:4])
 
-	envs := req.BuildEnv()
-	// mounts := p.getOSMounts()
+	envs := types.BuildEnv(function)
 
 	var containerResources container.Resources
 
-	if req.Limits != nil && len(req.Limits.Memory) > 0 {
-		qty, err := resource.ParseQuantity(req.Limits.Memory)
+	if function.Limits != nil && len(function.Limits.Memory) > 0 {
+		qty, err := resource.ParseQuantity(function.Limits.Memory)
 		if err != nil {
-			p.log.Printf("error parsing (%q) as quantity: %s", req.Limits.Memory, err.Error())
+			p.log.Printf("error parsing (%q) as quantity: %s", function.Limits.Memory, err.Error())
 		}
 		containerResources.Memory = qty.Value()
 	}
@@ -118,8 +119,8 @@ func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateReq
 		&container.Config{
 			Env:      envs,
 			Labels:   labels,
-			Hostname: req.Name,
-			Image:    req.Image,
+			Hostname: function.Name,
+			Image:    function.Image,
 		},
 		&container.HostConfig{
 			// Mounts:      mounts,
@@ -144,11 +145,6 @@ func (p *DockerProvider) Deploy(ctx context.Context, req types.FunctionCreateReq
 	if err != nil {
 		return nil, err
 	}
-	ip, err := cni.GetIPAddress(fn)
-	if err != nil {
-		return nil, err
-	}
-	fn.IPAddress = ip
-	fn.Scheme = req.Scheme
+	fn.Scheme = function.Scheme
 	return fn, nil
 }

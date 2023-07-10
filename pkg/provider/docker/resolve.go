@@ -23,10 +23,10 @@ func (p *DockerProvider) Resolve(ctx context.Context, functionName string, cni *
 	idx := newRand.Intn(len(fns))
 	fn := fns[idx]
 	var urlStr string
-	if fn.WatchdogPort != "" {
-		urlStr = fmt.Sprintf("http://%s:%s", fn.IPAddress, fn.WatchdogPort)
+	if fn.WatchDogPort != "" {
+		urlStr = fmt.Sprintf("http://%s:%s", fn.IpAddress, fn.WatchDogPort)
 	} else {
-		urlStr = fmt.Sprintf("http://%s", fn.IPAddress)
+		urlStr = fmt.Sprintf("http://%s", fn.IpAddress)
 	}
 	urlRes, err := url.Parse(urlStr)
 	return *urlRes, err

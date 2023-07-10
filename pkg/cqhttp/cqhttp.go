@@ -8,13 +8,14 @@ import (
 	"net/url"
 	"sync"
 
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+
 	"github.com/miRemid/cqless/pkg/cqhttp/types"
 	"github.com/miRemid/cqless/pkg/httputil"
 	"github.com/miRemid/cqless/pkg/logger"
 	dtypes "github.com/miRemid/cqless/pkg/types"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 var defaultCQHTTPManager *CQHTTPManager
@@ -83,8 +84,8 @@ func (m *CQHTTPManager) processMessageQueue() {
 			continue
 		}
 		// 调用目标函数
-		cqless_invoke_api := "http://%s:%d/function/%s"
-		requestURI := fmt.Sprintf(cqless_invoke_api, "localhost", dtypes.GetConfig().Gateway.Port, funcName)
+		cqless_invoke_api := "http://%s/function/%s"
+		requestURI := fmt.Sprintf(cqless_invoke_api, dtypes.GetConfig().Proxy.Address, funcName)
 		uri, _ := url.Parse(requestURI)
 		query := uri.Query()
 		for _, p := range params {

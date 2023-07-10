@@ -11,13 +11,13 @@ import (
 )
 
 func RateLimit(rateConfig *types.RateLimitOption) gin.HandlerFunc {
-	log.Info().Float64("rateLimit.limit", rateConfig.Limit).Int("rateLimit.Burst", rateConfig.Burst).Msg("已启动令牌桶功能")
+	log.Info().Float64("rateLimit.limit", rateConfig.Limit).Int("rateLimit.Burst", rateConfig.Burst).Msg("enable rate limiter for proxy")
 	limit := rate.NewLimiter(rate.Limit(rateConfig.Limit), rateConfig.Burst)
 	return func(ctx *gin.Context) {
 		if limit.Allow() {
 			ctx.Next()
 		} else {
-			log.Debug().Msg("过多请求，拒绝调用")
+			log.Debug().Msg("too much requests, reject")
 			ctx.AbortWithStatusJSON(http.StatusTooManyRequests, httputil.Response{})
 		}
 	}

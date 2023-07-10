@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/buger/jsonparser"
-	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 )
 
 var upgrader = websocket.Upgrader{
@@ -16,12 +16,12 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func WebsocketHandler() gin.HandlerFunc {
+func WebsocketHandler() runtime.HandlerFunc {
 	return defaultCQHTTPManager.WebsocketHandler
 }
 
-func (c *CQHTTPManager) WebsocketHandler(ctx *gin.Context) {
-	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
+func (c *CQHTTPManager) WebsocketHandler(w http.ResponseWriter, r *http.Request, params map[string]string) {
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		c.log.Error().Err(err).Send()
 		return
