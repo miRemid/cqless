@@ -16,7 +16,9 @@ CYAN   := $(shell tput -Txterm setaf 6)
 RESET  := $(shell tput -Txterm sgr0)
 
 GEN_DIR := pkg
-PROTO_FILES := $(wildcard pb/*.proto)
+THIRD_PARTY_PATH := pb/thirdparty
+PROTO_FILES_PATH := pb/core
+PROTO_FILES := $(wildcard ${PROTO_FILES_PATH}/*.proto)
 define exec-command
 $(1)
 
@@ -112,7 +114,7 @@ help: ## Show this help.
 
 .PHONY: gen
 gen:
-	rm -rf ./$(GEN_DIR)/pb	
+	rm -rf ./$(GEN_DIR)/pb
 	mkdir -p ./$(GEN_DIR)/pb
-	$(foreach file,$(PROTO_FILES),$(call exec-command, protoc --go_out ./$(GEN_DIR) --go-grpc_out ./$(GEN_DIR) $(file)))
-	$(foreach file,$(PROTO_FILES),$(call exec-command, protoc --grpc-gateway_out ./$(GEN_DIR) --grpc-gateway_opt logtostderr=true $(file)))
+	$(foreach file,$(PROTO_FILES),$(call exec-command, protoc --proto_path=. --proto_path=$(THIRD_PARTY_PATH) --go_out ./$(GEN_DIR) --go-grpc_out ./$(GEN_DIR) $(file)))
+	$(foreach file,$(PROTO_FILES),$(call exec-command, protoc --proto_path=. --proto_path=$(THIRD_PARTY_PATH) --grpc-gateway_out ./$(GEN_DIR) --grpc-gateway_opt logtostderr=true $(file)))
